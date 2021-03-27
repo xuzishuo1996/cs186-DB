@@ -168,7 +168,50 @@ class LeafNode extends BPlusNode {
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
         // TODO(proj2): implement
 
-        return Optional.empty();
+        // choose the right pos and insert
+        int n = keys.size();
+        int insertPos = -1;
+        if (n == 0) {
+            insertPos = 0;
+        } else {
+            for (int i = 0; i < n; ++i) {
+                if (keys.get(i).equals(key)) {
+                    throw new BPlusTreeException("Do not allow duplication keys!");
+                } else if (keys.get(i).compareTo(key) > 0) {
+                    insertPos = i;
+                }
+            }
+            if (insertPos < 0) {
+                insertPos = n;
+            }
+        }
+        keys.add(insertPos, key);
+        rids.add(insertPos, rid);
+
+        int d = metadata.getOrder();
+        // no overflow: return Optional.empty()
+        if (keys.size() <= d * 2) {
+            sync();
+            return Optional.empty();
+        } else {    // overflow, split into 2 nodes with d and n - d keys, return the first entry in the right node as the split key
+            // 1. split the keys and rids - d : (n - d)
+            List<DataBox> rightKeys = new ArrayList<>(keys.subList(d, keys.size()));
+            List<RecordId> rightRids = new ArrayList<>(rids.subList(d, rids.size()));
+            keys = new ArrayList<>(keys.subList(0, d));
+            rids = new ArrayList<>(rids.subList(0, d));
+
+            // 2. create a new LeafNode for the right part (note: use the correct form of constructor)
+            // point rightSibling of the right node to that of the left node,
+            // and point that of the left node to the right node
+            LeafNode rightNode = new LeafNode(metadata, bufferManager, rightKeys, rightRids, rightSibling, treeContext);
+            long rightNodePageNum = rightNode.getPage().getPageNum();
+            rightSibling = Optional.of(rightNodePageNum);
+
+            // 3. return the first key in the right node as the split key,
+            // and also return the page num of the right node
+            sync();
+            return Optional.of(new Pair<>(rightKeys.get(0), rightNodePageNum));
+        }
     }
 
     // See BPlusNode.bulkLoad.
