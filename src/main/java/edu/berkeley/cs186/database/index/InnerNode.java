@@ -116,9 +116,10 @@ class InnerNode extends BPlusNode {
     // See BPlusNode.remove.
     @Override
     public void remove(DataBox key) {
-        // TODO(proj2): implement
+        // (proj2): implement
 
-        return;
+        get(key).remove(key);
+        sync();
     }
 
     // Helpers /////////////////////////////////////////////////////////////////
