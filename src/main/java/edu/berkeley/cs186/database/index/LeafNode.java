@@ -146,7 +146,7 @@ class LeafNode extends BPlusNode {
     // See BPlusNode.get.
     @Override
     public LeafNode get(DataBox key) {
-        // TODO(proj2): implement
+        // (proj2): implement
 
         return this;
 //        if (getKey(key).isPresent()) {
@@ -158,9 +158,9 @@ class LeafNode extends BPlusNode {
     // See BPlusNode.getLeftmostLeaf.
     @Override
     public LeafNode getLeftmostLeaf() {
-        // TODO(proj2): implement
+        // (proj2): implement
 
-        return null;
+        return this;
     }
 
     // See BPlusNode.put.
