@@ -322,6 +322,10 @@ public class TestLeafNode {
 
         assertEquals(leaf, LeafNode.fromBytes(metadata, bufferManager, treeContext, pageNum));
 
+        LeafNode leafWithoutRightSibling;
+
+        long pageNumWithoutRightSibling;
+
         for (int i = 0; i < 10; i++) {
             keys.add(new IntDataBox(i));
             rids.add(new RecordId(i, (short) i));
@@ -331,6 +335,14 @@ public class TestLeafNode {
             pageNum = leaf.getPage().getPageNum();
 
             assertEquals(leaf, LeafNode.fromBytes(metadata, bufferManager, treeContext, pageNum));
+
+            // test LeafNode without rightSibling
+            leafWithoutRightSibling = new LeafNode(metadata, bufferManager, keys, rids, Optional.empty(), treeContext);
+
+            pageNumWithoutRightSibling = leafWithoutRightSibling.getPage().getPageNum();
+
+            assertEquals(leafWithoutRightSibling,
+                    LeafNode.fromBytes(metadata, bufferManager, treeContext, pageNumWithoutRightSibling));
         }
     }
 }
