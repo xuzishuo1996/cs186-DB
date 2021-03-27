@@ -148,7 +148,11 @@ class LeafNode extends BPlusNode {
     public LeafNode get(DataBox key) {
         // TODO(proj2): implement
 
-        return null;
+        return this;
+//        if (getKey(key).isPresent()) {
+//            return this;
+//        }
+//        return null;
     }
 
     // See BPlusNode.getLeftmostLeaf.

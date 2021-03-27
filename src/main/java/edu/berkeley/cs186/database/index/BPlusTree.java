@@ -146,7 +146,13 @@ public class BPlusTree {
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
         // TODO(proj2): implement
-
+        LeafNode leaf = root.get(key);
+        List<DataBox> keys = leaf.getKeys();
+        for (int i = 0; i < keys.size(); ++i) {
+            if (keys.get(i).equals(key)) {
+                return Optional.of(leaf.getRids().get(i));
+            }
+        }
         return Optional.empty();
     }
 
