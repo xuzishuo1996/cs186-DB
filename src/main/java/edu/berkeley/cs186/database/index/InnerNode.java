@@ -7,6 +7,7 @@ import edu.berkeley.cs186.database.common.Buffer;
 import edu.berkeley.cs186.database.common.Pair;
 import edu.berkeley.cs186.database.concurrency.LockContext;
 import edu.berkeley.cs186.database.databox.DataBox;
+import edu.berkeley.cs186.database.databox.IntDataBox;
 import edu.berkeley.cs186.database.databox.Type;
 import edu.berkeley.cs186.database.memory.BufferManager;
 import edu.berkeley.cs186.database.memory.Page;
@@ -108,20 +109,47 @@ class InnerNode extends BPlusNode {
             sync();
             return Optional.empty();
         } else {    // child split
-            // insert the split key and right node page num
+//            if (child instanceof LeafNode) {
+//                System.out.println("=== lead node value");
+//                System.out.println(key);
+//                System.out.println(rid);
+//            }
+
+            // insert the split key and right node page
 
             DataBox splitKey = res.get().getFirst();
+            long splitRightChild = res.get().getSecond();
+            // long splitLeftChild = getChild(insertPos).getPage().getPageNum();
+
             int insertPos = numLessThan(splitKey, keys);
             // int insertPos = childIdx;
             keys.add(insertPos, splitKey);
-
-            // long splitLeftChild = getChild(insertPos).getPage().getPageNum();
-            long splitRightChild = res.get().getSecond();
             children.add(insertPos + 1, splitRightChild);
+
+//            // for test only:
+//            if (key.equals(new IntDataBox(3))) {
+//                System.out.println("### inner node up 3 ###");
+//                System.out.println("splitKey: " + splitKey);
+//                System.out.println("keys: ");
+//                for (DataBox data: keys) {
+//                    System.out.print(data + " ");
+//                }
+//                System.out.println();
+//                for (int i = 0; i < children.size(); ++i) {
+//                    System.out.print("-- child " + i + ": ");
+//                    LeafNode childNode = (LeafNode) getChild(i);
+//                    for (DataBox data: childNode.getKeys()) {
+//                        System.out.print(data + " ");
+//                    }
+//                    System.out.println();
+//                }
+//                System.out.println("#########");
+//            }
 
             // check whether to split curr node
             int d = metadata.getOrder();
             if (keys.size() <= d * 2) {
+                sync(); // fail testWhiteBoxTest() because of not sync()
                 return Optional.empty();
             } else {
                 // 1. split the keys - d : 1: d. Push the middle key up (move instead of copy).
@@ -290,6 +318,14 @@ class InnerNode extends BPlusNode {
 
     @Override
     public String toSexp() {
+//        // for test
+//        System.out.print("[inner toSexp()] keys: ");
+//        for (DataBox key: keys) {
+//            System.out.println(key + " ");
+//        }
+//        System.out.println("[inner toSexp()] children.size(): " + children.size());
+//        System.out.println("===============");
+
         StringBuilder sb = new StringBuilder("(");
         for (int i = 0; i < keys.size(); ++i) {
             sb.append(getChild(i).toSexp()).append(" ").append(keys.get(i)).append(" ");

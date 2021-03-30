@@ -169,22 +169,26 @@ class LeafNode extends BPlusNode {
         // TODO(proj2): implement
 
         // choose the right pos and insert
-        int n = keys.size();
-        int insertPos = -1;
-        if (n == 0) {
-            insertPos = 0;
-        } else {
-            for (int i = 0; i < n; ++i) {
-                if (keys.get(i).equals(key)) {
-                    throw new BPlusTreeException("Do not allow duplication keys!");
-                } else if (keys.get(i).compareTo(key) > 0) {
-                    insertPos = i;
-                    break;
-                }
-            }
-            if (insertPos < 0) {
-                insertPos = n;
-            }
+//        int n = keys.size();
+//        int insertPos = -1;
+//        if (n == 0) {
+//            insertPos = 0;
+//        } else {
+//            for (int i = 0; i < n; ++i) {
+//                if (keys.get(i).equals(key)) {
+//                    throw new BPlusTreeException("Do not allow duplication keys!");
+//                } else if (keys.get(i).compareTo(key) > 0) {
+//                    insertPos = i;
+//                    break;
+//                }
+//            }
+//            if (insertPos < 0) {
+//                insertPos = n;
+//            }
+//        }
+        int insertPos = InnerNode.numLessThan(key, keys);
+        if (insertPos < keys.size() && keys.get(insertPos).equals(key)) {
+            throw new BPlusTreeException("Do not allow duplication keys!");
         }
         keys.add(insertPos, key);
         rids.add(insertPos, rid);
@@ -358,6 +362,13 @@ class LeafNode extends BPlusNode {
 
     @Override
     public String toSexp() {
+//        // for test
+//        System.out.println("[leaf toSexp()] keys.size(): " + keys.size());
+//        for (DataBox key: keys) {
+//            System.out.print(key + " ");
+//        }
+//        System.out.println("\n=============");
+
         List<String> ss = new ArrayList<>();
         for (int i = 0; i < keys.size(); ++i) {
             String key = keys.get(i).toString();
