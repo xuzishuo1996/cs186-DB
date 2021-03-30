@@ -179,6 +179,45 @@ class InnerNode extends BPlusNode {
             float fillFactor) {
         // TODO(proj2): implement
 
+        while (data.hasNext()) {
+            Pair<DataBox, RecordId> pair = data.next();
+            DataBox key = pair.getFirst();
+            RecordId rid = pair.getSecond();
+
+            // always bulk load to the rightmost child
+            int childIdx = children.size() - 1;
+            BPlusNode child = getChild(childIdx);
+            Optional<Pair<DataBox, Long>> res = child.bulkLoad(data, fillFactor);
+            if (res.isPresent()) { // child split
+                DataBox splitKey = res.get().getFirst();
+                long splitRightChild = res.get().getSecond();
+                // long splitLeftChild = getChild(insertPos).getPage().getPageNum();
+
+                int insertPos = numLessThan(splitKey, keys);
+                // int insertPos = childIdx;
+                keys.add(insertPos, splitKey);
+                children.add(insertPos + 1, splitRightChild);
+
+                int d = metadata.getOrder();
+                if (keys.size() > d * 2) { // curr inner node overflow, split
+                    // 1. split the keys - d : 1: d. Push the middle key up (move instead of copy).
+                    DataBox middleKey = keys.get(d);
+                    List<DataBox> rightKeys = new ArrayList<>(keys.subList(d + 1, keys.size()));
+                    List<Long> rightChildren = new ArrayList<>(children.subList(d + 1, children.size()));
+                    keys = new ArrayList<>(keys.subList(0, d));
+                    children = new ArrayList<>(children.subList(0, d + 1));
+
+                    // 2. create a new InnerNode for the right part (note: use the correct form of constructor)
+                    InnerNode rightNode = new InnerNode(metadata, bufferManager, rightKeys, rightChildren, treeContext);
+
+                    // 3. return the middle key as the split key,
+                    // and also return the page num of the right node
+                    sync();
+                    return Optional.of(new Pair<>(middleKey, rightNode.getPage().getPageNum()));
+                }
+            }
+        }
+        sync();
         return Optional.empty();
     }
 

@@ -226,6 +226,47 @@ class LeafNode extends BPlusNode {
             float fillFactor) {
         // TODO(proj2): implement
 
+        while (data.hasNext()) {
+            Pair<DataBox, RecordId> pair = data.next();
+            DataBox key = pair.getFirst();
+            RecordId rid = pair.getSecond();
+
+//            int insertPos = InnerNode.numLessThan(key, keys);
+//            if (insertPos < keys.size() && keys.get(insertPos).equals(key)) {
+//                throw new BPlusTreeException("Do not allow duplication keys!");
+//            }
+//            keys.add(insertPos, key);
+//            rids.add(insertPos, rid);
+            // assumes data is pre-sorted in ascending order
+            keys.add(key);
+            rids.add(rid);
+
+            int threshold = caThreshold(fillFactor);
+            // no overflow: return Optional.empty()
+            if (keys.size() > threshold) {
+                // overflow, split into 2 nodes with threshold and 1 keys, return the first entry in the right node as the split key
+
+                // 1. split the keys and rids - threshold : 1
+                List<DataBox> rightKeys = new ArrayList<>(keys.subList(threshold, keys.size()));
+                List<RecordId> rightRids = new ArrayList<>(rids.subList(threshold, rids.size()));
+                keys = new ArrayList<>(keys.subList(0, threshold));
+                rids = new ArrayList<>(rids.subList(0, threshold));
+
+                // 2. create a new LeafNode for the right part (note: use the correct form of constructor)
+                // point rightSibling of the right node to that of the left node,
+                // and point that of the left node to the right node
+                LeafNode rightNode = new LeafNode(metadata, bufferManager, rightKeys, rightRids, rightSibling, treeContext);
+                long rightNodePageNum = rightNode.getPage().getPageNum();
+                rightSibling = Optional.of(rightNodePageNum);
+
+                // 3. return the first key in the right node as the split key,
+                // and also return the page num of the right node
+                sync();
+                return Optional.of(new Pair<>(rightKeys.get(0), rightNodePageNum));
+            }
+        }
+        // without overflow during the process
+        sync();
         return Optional.empty();
     }
 
@@ -279,6 +320,10 @@ class LeafNode extends BPlusNode {
     }
 
     // Helpers /////////////////////////////////////////////////////////////////
+    private int caThreshold(float fillFactor) {
+        return (int) Math.ceil(fillFactor * metadata.getOrder() * 2);
+    }
+
     @Override
     public Page getPage() {
         return page;

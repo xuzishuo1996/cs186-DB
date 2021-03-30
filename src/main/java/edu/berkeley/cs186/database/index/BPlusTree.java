@@ -306,7 +306,40 @@ public class BPlusTree {
         // Use the provided updateRoot() helper method to change
         // the tree's root if the old root splits.
 
-        return;
+        // check operations
+        // ensure that the tree is empty
+        Iterator<RecordId> recordIter = scanAll();
+        if (recordIter.hasNext()) {
+            throw new BPlusTreeException("The tree is not empty. Could not bulk load!");
+        }
+        // ensure no repetitive elems
+        if (data.hasNext()) {
+            DataBox prevKey = data.next().getFirst();
+            while (data.hasNext()) {
+                DataBox currKey = data.next().getFirst();
+                if (currKey.equals(prevKey)) {
+                    throw new BPlusTreeException("Do not allow duplication keys!");
+                }
+                prevKey = currKey;
+            }
+        }
+
+        Optional<Pair<DataBox, Long>> res = root.bulkLoad(data, fillFactor);
+        // if child split
+        if (res.isPresent()) {
+            DataBox splitKey = res.get().getFirst();
+            long splitRightChild = res.get().getSecond();
+
+            List<DataBox> keys = new ArrayList<>(Collections.singletonList(splitKey));
+            List<Long> children = new ArrayList<>();
+            children.add(root.getPage().getPageNum());
+            children.add(splitRightChild);
+
+            // construct a brand-new inner node as the root
+            InnerNode newRoot = new InnerNode(metadata, bufferManager, keys, children, lockContext);
+            // update the root variable using helper
+            updateRoot(newRoot);
+        }
     }
 
     /**
