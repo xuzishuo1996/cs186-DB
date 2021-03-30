@@ -101,7 +101,43 @@ class InnerNode extends BPlusNode {
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
         // TODO(proj2): implement
 
-        return Optional.empty();
+        int childIdx = numLessThanEqual(key, keys);
+        BPlusNode child = getChild(childIdx);
+        Optional<Pair<DataBox, Long>> res = child.put(key, rid);
+        if (!res.isPresent()) { // no split
+            sync();
+            return Optional.empty();
+        } else {    // child split
+            DataBox splitKey = res.get().getFirst();
+            // int insertPos = numLessThan(splitKey, keys);
+            int insertPos = childIdx + 1;
+            keys.add(insertPos, splitKey);
+
+            // long splitLeftChild = getChild(insertPos).getPage().getPageNum();
+            long splitRightChild = res.get().getSecond();
+            children.add(insertPos + 1, splitRightChild);
+
+            // check whether to split curr node
+            int d = metadata.getOrder();
+            if (keys.size() <= d * 2) {
+                return Optional.empty();
+            } else {
+                // 1. split the keys and rids - d : 1: d. Push the middle key up (move instead of copy).
+                DataBox middleKey = keys.get(d);
+                List<DataBox> rightKeys = new ArrayList<>(keys.subList(d + 1, keys.size()));
+                List<Long> rightChildren = new ArrayList<>(children.subList(d, children.size()));
+                keys = new ArrayList<>(keys.subList(0, d));
+                children = new ArrayList<>(children.subList(0, d));
+
+                // 2. create a new InnerNode for the right part (note: use the correct form of constructor)
+                InnerNode rightNode = new InnerNode(metadata, bufferManager, rightKeys, rightChildren, treeContext);
+
+                // 3. return the middle key as the split key,
+                // and also return the page num of the right node
+                sync();
+                return Optional.of(new Pair<>(middleKey, rightNode.getPage().getPageNum()));
+            }
+        }
     }
 
     // See BPlusNode.bulkLoad.
