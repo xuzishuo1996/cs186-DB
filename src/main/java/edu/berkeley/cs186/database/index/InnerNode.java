@@ -108,9 +108,11 @@ class InnerNode extends BPlusNode {
             sync();
             return Optional.empty();
         } else {    // child split
+            // insert the split key and right node page num
+
             DataBox splitKey = res.get().getFirst();
-            // int insertPos = numLessThan(splitKey, keys);
-            int insertPos = childIdx + 1;
+            int insertPos = numLessThan(splitKey, keys);
+            // int insertPos = childIdx;
             keys.add(insertPos, splitKey);
 
             // long splitLeftChild = getChild(insertPos).getPage().getPageNum();
@@ -122,12 +124,12 @@ class InnerNode extends BPlusNode {
             if (keys.size() <= d * 2) {
                 return Optional.empty();
             } else {
-                // 1. split the keys and rids - d : 1: d. Push the middle key up (move instead of copy).
+                // 1. split the keys - d : 1: d. Push the middle key up (move instead of copy).
                 DataBox middleKey = keys.get(d);
                 List<DataBox> rightKeys = new ArrayList<>(keys.subList(d + 1, keys.size()));
-                List<Long> rightChildren = new ArrayList<>(children.subList(d, children.size()));
+                List<Long> rightChildren = new ArrayList<>(children.subList(d + 1, children.size()));
                 keys = new ArrayList<>(keys.subList(0, d));
-                children = new ArrayList<>(children.subList(0, d));
+                children = new ArrayList<>(children.subList(0, d + 1));
 
                 // 2. create a new InnerNode for the right part (note: use the correct form of constructor)
                 InnerNode rightNode = new InnerNode(metadata, bufferManager, rightKeys, rightChildren, treeContext);
