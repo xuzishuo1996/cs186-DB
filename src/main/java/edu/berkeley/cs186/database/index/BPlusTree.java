@@ -208,8 +208,7 @@ public class BPlusTree {
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
         // TODO(proj2): Return a BPlusTreeIterator.
-
-        return Collections.emptyIterator();
+        return new BPlusTreeIterator(Optional.empty());
     }
 
     /**
@@ -241,8 +240,7 @@ public class BPlusTree {
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
         // TODO(proj2): Return a BPlusTreeIterator.
-
-        return Collections.emptyIterator();
+        return new BPlusTreeIterator(Optional.of(key));
     }
 
     /**
@@ -443,9 +441,28 @@ public class BPlusTree {
     private class BPlusTreeIterator implements Iterator<RecordId> {
         // TODO(proj2): Add whatever fields and constructors you want here.
 
+        private LeafNode currLeafNode;
+        private Iterator<RecordId> iter;
+
+        public BPlusTreeIterator(Optional<DataBox> greaterEqualBase) {
+            this.currLeafNode = root.getLeftmostLeaf();
+            if (greaterEqualBase.isPresent()) {
+                iter = currLeafNode.scanGreaterEqual(greaterEqualBase.get());
+            } else {
+                iter = currLeafNode.scanAll();
+            }
+        }
+
         @Override
         public boolean hasNext() {
             // TODO(proj2): implement
+            if (iter.hasNext()) {
+                return true;
+            } else if (currLeafNode.getRightSibling().isPresent()) {
+                currLeafNode = currLeafNode.getRightSibling().get();
+                iter = currLeafNode.scanAll();
+                return iter.hasNext();
+            }
 
             return false;
         }
@@ -454,7 +471,9 @@ public class BPlusTree {
         public RecordId next() {
             // TODO(proj2): implement
 
-            throw new NoSuchElementException();
+            return iter.next();
+
+            // throw new NoSuchElementException();
         }
     }
 }
