@@ -166,7 +166,7 @@ class LeafNode extends BPlusNode {
     // See BPlusNode.put.
     @Override
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
-        // TODO(proj2): implement
+        // (proj2): implement
 
         // choose the right pos and insert
 //        int n = keys.size();
@@ -224,7 +224,7 @@ class LeafNode extends BPlusNode {
     @Override
     public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> data,
             float fillFactor) {
-        // TODO(proj2): implement
+        // (proj2): implement
 
         while (data.hasNext()) {
             Pair<DataBox, RecordId> pair = data.next();
@@ -238,11 +238,13 @@ class LeafNode extends BPlusNode {
 //            keys.add(insertPos, key);
 //            rids.add(insertPos, rid);
             // assumes data is pre-sorted in ascending order
+            if (!keys.isEmpty() && key.equals(keys.get(keys.size() - 1))) {
+                throw new BPlusTreeException("Do not allow duplication keys!");
+            }
             keys.add(key);
             rids.add(rid);
 
             int threshold = caThreshold(fillFactor);
-            // no overflow: return Optional.empty()
             if (keys.size() > threshold) {
                 // overflow, split into 2 nodes with threshold and 1 keys, return the first entry in the right node as the split key
 

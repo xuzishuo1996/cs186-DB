@@ -100,7 +100,7 @@ class InnerNode extends BPlusNode {
     // See BPlusNode.put.
     @Override
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
-        // TODO(proj2): implement
+        // (proj2): implement
 
         int childIdx = numLessThanEqual(key, keys);
         BPlusNode child = getChild(childIdx);
@@ -177,12 +177,9 @@ class InnerNode extends BPlusNode {
     @Override
     public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> data,
             float fillFactor) {
-        // TODO(proj2): implement
+        // (proj2): implement
 
         while (data.hasNext()) {
-            Pair<DataBox, RecordId> pair = data.next();
-            DataBox key = pair.getFirst();
-            RecordId rid = pair.getSecond();
 
             // always bulk load to the rightmost child
             int childIdx = children.size() - 1;
@@ -192,11 +189,9 @@ class InnerNode extends BPlusNode {
                 DataBox splitKey = res.get().getFirst();
                 long splitRightChild = res.get().getSecond();
                 // long splitLeftChild = getChild(insertPos).getPage().getPageNum();
-
-                int insertPos = numLessThan(splitKey, keys);
-                // int insertPos = childIdx;
-                keys.add(insertPos, splitKey);
-                children.add(insertPos + 1, splitRightChild);
+                // assumes keys are sorted in ascending order
+                keys.add(splitKey);
+                children.add(splitRightChild);
 
                 int d = metadata.getOrder();
                 if (keys.size() > d * 2) { // curr inner node overflow, split
