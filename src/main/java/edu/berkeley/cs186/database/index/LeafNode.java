@@ -186,6 +186,7 @@ class LeafNode extends BPlusNode {
 //                insertPos = n;
 //            }
 //        }
+
         int insertPos = InnerNode.numLessThan(key, keys);
         if (insertPos < keys.size() && keys.get(insertPos).equals(key)) {
             throw new BPlusTreeException("Do not allow duplication keys!");

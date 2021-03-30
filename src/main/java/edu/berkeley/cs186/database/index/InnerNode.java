@@ -109,6 +109,8 @@ class InnerNode extends BPlusNode {
             sync();
             return Optional.empty();
         } else {    // child split
+
+//            // for test only:
 //            if (child instanceof LeafNode) {
 //                System.out.println("=== lead node value");
 //                System.out.println(key);
@@ -147,11 +149,12 @@ class InnerNode extends BPlusNode {
 //            }
 
             // check whether to split curr node
+            // deal with curr inner node split
             int d = metadata.getOrder();
-            if (keys.size() <= d * 2) {
+            if (keys.size() <= d * 2) { // not overflow, do not split
                 sync(); // fail testWhiteBoxTest() because of not sync()
                 return Optional.empty();
-            } else {
+            } else {    // overflow, split
                 // 1. split the keys - d : 1: d. Push the middle key up (move instead of copy).
                 DataBox middleKey = keys.get(d);
                 List<DataBox> rightKeys = new ArrayList<>(keys.subList(d + 1, keys.size()));

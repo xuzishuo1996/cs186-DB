@@ -445,10 +445,11 @@ public class BPlusTree {
         private Iterator<RecordId> iter;
 
         public BPlusTreeIterator(Optional<DataBox> greaterEqualBase) {
-            this.currLeafNode = root.getLeftmostLeaf();
             if (greaterEqualBase.isPresent()) {
+                currLeafNode = root.get(greaterEqualBase.get());
                 iter = currLeafNode.scanGreaterEqual(greaterEqualBase.get());
             } else {
+                currLeafNode = root.getLeftmostLeaf();
                 iter = currLeafNode.scanAll();
             }
         }
