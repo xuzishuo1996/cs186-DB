@@ -242,8 +242,13 @@ public class GHJOperator extends JoinOperator {
         ArrayList<Record> leftRecords = new ArrayList<>();
         ArrayList<Record> rightRecords = new ArrayList<>();
 
-        // TODO(proj3_part1): populate leftRecords and rightRecords such that
+        // (proj3_part1): populate leftRecords and rightRecords such that
         // SHJ breaks when trying to join them but not GHJ
+        
+        for (int i = 0; i < 200; ++i) {
+            leftRecords.add(createRecord(i));
+        }
+        rightRecords.add(createRecord(1));
         return new Pair<>(leftRecords, rightRecords);
     }
 
@@ -263,7 +268,13 @@ public class GHJOperator extends JoinOperator {
     public static Pair<List<Record>, List<Record>> getBreakGHJInputs() {
         ArrayList<Record> leftRecords = new ArrayList<>();
         ArrayList<Record> rightRecords = new ArrayList<>();
-        // TODO(proj3_part1): populate leftRecords and rightRecords such that GHJ breaks
+        // (proj3_part1): populate leftRecords and rightRecords such that GHJ breaks
+
+        // create inputs with key skew
+        for (int i = 0; i < 100; ++i) {
+            leftRecords.add(createRecord(1));
+            rightRecords.add(createRecord(1));
+        }
 
         return new Pair<>(leftRecords, rightRecords);
     }
