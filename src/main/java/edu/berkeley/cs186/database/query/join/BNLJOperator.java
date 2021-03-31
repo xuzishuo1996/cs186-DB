@@ -65,6 +65,7 @@ public class BNLJOperator extends JoinOperator {
         private BNLJIterator() {
             super();
             this.leftSourceIterator = getLeftSource().iterator();
+            // this.leftSourceIterator = getLeftSource().backtrackingIterator();
             this.fetchNextLeftBlock();
 
             this.rightSourceIterator = getRightSource().backtrackingIterator();
@@ -141,7 +142,7 @@ public class BNLJOperator extends JoinOperator {
                 if (rightPageIterator.hasNext()) {
                     nextRecord = rightPageIterator.next();
                     if (compare(leftRecord, nextRecord) == 0) {
-                        return leftRecord.concat(nextRecord);
+                        return leftRecord.concat(nextRecord);   // Record.concat returns a new Record
                     }
                 }
                 // Case 2 (for loop 3): The right page iterator doesn't have a value to yield but the left block iterator does
@@ -157,7 +158,7 @@ public class BNLJOperator extends JoinOperator {
                 else if (rightSourceIterator.hasNext()) {
                     // [reset left]: reset left record iter to the first record in the curr block of left pages
                     leftBlockIterator.reset();
-                    leftRecord = leftBlockIterator.next();
+                    leftRecord = leftBlockIterator.hasNext() ? leftBlockIterator.next() : null;
 
                     // [advance right]
                     fetchNextRightPage();
@@ -167,7 +168,7 @@ public class BNLJOperator extends JoinOperator {
                 else if (leftSourceIterator.hasNext()) {
                     // [advance left]: to the next block
                     fetchNextLeftBlock();
-                    leftRecord = leftBlockIterator.next();
+                    // NOTE: have already set leftRecord in fetchNextLeftBlock();
 
                     // [reset right]: reset right record iter to the first record of the FIRST page
                     rightSourceIterator.reset();    // has marked it in the constructor
