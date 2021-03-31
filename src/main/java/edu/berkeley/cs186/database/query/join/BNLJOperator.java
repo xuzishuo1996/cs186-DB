@@ -110,7 +110,7 @@ public class BNLJOperator extends JoinOperator {
         private void fetchNextRightPage() {
             // (proj3_part1): implement
 
-            rightPageIterator = QueryOperator.getBlockIterator(leftSourceIterator, getLeftSource().getSchema(), 1);
+            rightPageIterator = QueryOperator.getBlockIterator(rightSourceIterator, getRightSource().getSchema(), 1);
 
             // mark it to the first entry of the page for future reset
             rightPageIterator.markNext();
@@ -157,6 +157,7 @@ public class BNLJOperator extends JoinOperator {
                 else if (rightSourceIterator.hasNext()) {
                     // [reset left]: reset left record iter to the first record in the curr block of left pages
                     leftBlockIterator.reset();
+                    leftRecord = leftBlockIterator.next();
 
                     // [advance right]
                     fetchNextRightPage();
