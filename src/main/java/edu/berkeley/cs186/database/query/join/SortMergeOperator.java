@@ -137,6 +137,25 @@ public class SortMergeOperator extends JoinOperator {
         /**
          * Returns the next record that should be yielded from this join,
          * or null if there are no more records to join.
+         *
+         * pseudocode:
+         *  do {
+         *      if (!mark) {
+         *          while (r < s) { advance r }
+         *          while (r > s) { advance s }
+         *          // mark start of \block" of S
+         *          mark = s
+         *      }
+         *      if (r == s) {
+         *          result = <r, s>
+         *          advance s
+         *          yield result
+         *      } else {
+         *          reset s to mark
+         *          advance r
+         *          mark = NULL
+         *      }
+         *  }
          */
         private Record fetchNextRecord() {
             // (proj3_part1): implement
@@ -146,29 +165,34 @@ public class SortMergeOperator extends JoinOperator {
                     return null;
                 }
 
-                if (!marked && rightRecord != null) {
-                    // left < right. compare() is inherited from JoinOperator
-                    while (compare(leftRecord, rightRecord) < 0) {
-                        // advance left
-                        if (!leftIterator.hasNext()) {
-                            return null;
-                        } else {
-                            leftRecord = leftIterator.next();
+                if (!marked) {
+                    if (rightRecord == null) {
+                        return null;
+                    } else {
+                        // left < right. compare() is inherited from JoinOperator
+                        while (compare(leftRecord, rightRecord) < 0) {
+                            // advance left
+                            if (!leftIterator.hasNext()) {
+                                return null;
+                            } else {
+                                leftRecord = leftIterator.next();
+                            }
                         }
-                    }
-                    // left > right
-                    while (compare(leftRecord, rightRecord) > 0) {
-                        // advance right
-                        if (!rightIterator.hasNext()) {
-                            return null;
-                        } else {
-                            rightRecord = rightIterator.next();
+                        // left > right
+                        while (compare(leftRecord, rightRecord) > 0) {
+                            // advance right
+                            if (!rightIterator.hasNext()) {
+                                return null;
+                            } else {
+                                rightRecord = rightIterator.next();
+                            }
                         }
+                        // mark the possible start of "same-val-block" in the right part
+                        rightIterator.markPrev();
+                        marked = true;
                     }
-                    // mark the possible start of "same-val-block" in the right part
-                    rightIterator.markPrev();
-                    marked = true;
                 }
+                // marked
                 if (rightRecord != null) {
                     if (leftRecord.equals(rightRecord)) {
                         Record joinedRecord = leftRecord.concat(rightRecord);   // concat() creates a new record
@@ -180,9 +204,12 @@ public class SortMergeOperator extends JoinOperator {
                         }
                         return joinedRecord;
                     } else {
+                        // reset right
                         rightIterator.reset();
-                        rightRecord = rightIterator.next();
+                        rightRecord = rightIterator.next(); // do not forget set right record
                         marked = false;
+                        // advance left
+                        leftRecord = leftIterator.next();
                     }
                 } else if (leftIterator.hasNext()) {
                     rightIterator.reset();
