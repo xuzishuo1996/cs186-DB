@@ -197,7 +197,7 @@ public class SortOperator extends QueryOperator {
         // Iterator over the records of the relation we want to sort
         Iterator<Record> sourceIterator = getSource().iterator();
 
-        // TODO(proj3_part1): implement
+        // (proj3_part1): implement
         List<Run> sortedRuns = new ArrayList<>();
         // pass 0: conquer
         while (sourceIterator.hasNext()) {

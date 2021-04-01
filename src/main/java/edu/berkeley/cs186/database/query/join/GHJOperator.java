@@ -13,6 +13,9 @@ import edu.berkeley.cs186.database.table.Schema;
 
 import java.util.*;
 
+/**
+ * reference: https://cs186berkeley.net/resources/static/notes/n07-Hashing.pdf
+ */
 public class GHJOperator extends JoinOperator {
     private int numBuffers;
     private Run joinedRecords;

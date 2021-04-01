@@ -10,6 +10,9 @@ import edu.berkeley.cs186.database.query.QueryOperator;
 import edu.berkeley.cs186.database.query.SortOperator;
 import edu.berkeley.cs186.database.table.Record;
 
+/**
+ * reference: https://cs186berkeley.net/resources/static/notes/n08-Joins.pdf
+ */
 public class SortMergeOperator extends JoinOperator {
     public SortMergeOperator(QueryOperator leftSource,
                              QueryOperator rightSource,
@@ -136,8 +139,65 @@ public class SortMergeOperator extends JoinOperator {
          * or null if there are no more records to join.
          */
         private Record fetchNextRecord() {
-            // TODO(proj3_part1): implement
-            return null;
+            // (proj3_part1): implement
+
+            if (leftRecord == null || rightRecord == null) {
+                return null;
+            }
+
+            while (true) {
+                if (leftRecord == null) {
+                    return null;
+                }
+
+                if (!marked) {
+                    // left < right. compare() is inherited from JoinOperator
+                    while (compare(leftRecord, rightRecord) < 0) {
+                        // advance left
+                        if (!leftIterator.hasNext()) {
+                            return null;
+                        } else {
+                            leftRecord = leftIterator.next();
+                        }
+                    }
+                    // left > right
+                    while (compare(leftRecord, rightRecord) > 0) {
+                        // advance right
+                        if (!rightIterator.hasNext()) {
+                            rightRecord = null;
+                        } else {
+                            rightRecord = rightIterator.next();
+                        }
+                    }
+                    // mark the possible start of "same-val-block" in the right part
+                    rightIterator.markNext();
+                }
+                if (rightRecord != null) {
+                    if (leftRecord.equals(rightRecord)) {
+                        Record joinedRecord = leftRecord.concat(rightRecord);   // concat() creates a new record
+                        // advance right
+                        if (!rightIterator.hasNext()) {
+                            rightRecord = null;
+                        } else {
+                            rightRecord = rightIterator.next();
+                        }
+                        return joinedRecord;
+                    } else {
+                        if (marked) {
+                            rightIterator.reset();
+                            rightRecord = rightIterator.next();
+                        }
+                        marked = false;
+                    }
+                } else if (leftIterator.hasNext() && marked) {
+                    rightIterator.reset();
+                    rightRecord = rightIterator.next();
+                    marked = false;
+                    leftRecord = leftIterator.next();
+                } else {
+                    return null;
+                }
+            }
         }
 
         @Override
