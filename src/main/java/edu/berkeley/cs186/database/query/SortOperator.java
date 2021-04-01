@@ -87,14 +87,16 @@ public class SortOperator extends QueryOperator {
      */
     public Run sortRun(Iterator<Record> records) {
         // (proj3_part1): implement
+
         List<Record> recordList = new ArrayList<>();
-        Run run = new Run(transaction, getSchema());
         while (records.hasNext()) {
             recordList.add(records.next());
         }
         recordList.sort(comparator);    // comparator is set to RecordComparator in the constructor
-        run.addAll(recordList);
-        return run;
+
+        Run res = new Run(transaction, getSchema());
+        res.addAll(recordList);
+        return res;
     }
 
     /**
@@ -114,8 +116,33 @@ public class SortOperator extends QueryOperator {
      */
     public Run mergeSortedRuns(List<Run> runs) {
         assert (runs.size() <= this.numBuffers - 1);
-        // TODO(proj3_part1): implement
-        return null;
+        // (proj3_part1): implement
+
+        Run res = new Run(transaction, getSchema());
+
+        // initialize the priority queue: add the first elems of each input Run into the priority queue
+        PriorityQueue<Pair<Record, Integer>> pq = new PriorityQueue<>(runs.size(), new RecordPairComparator());
+        for (int i = 0; i < runs.size(); ++i) {
+            BacktrackingIterator<Record> iter = runs.get(i).iterator();
+            if (iter.hasNext()) {
+                pq.add(new Pair<>(iter.next(), i));
+                //iter.remove();
+            }
+        }
+
+        // each time: poll an elem to the priority queue, and add an elem from the same input Run to the priority queue
+        while (!pq.isEmpty()) {
+            Pair<Record, Integer> nextItem = pq.poll();
+            res.add(nextItem.getFirst());
+            int nextIdx = nextItem.getSecond();
+            BacktrackingIterator<Record> iter = runs.get(nextIdx).iterator();
+            if (iter.hasNext()) {
+                pq.add(new Pair<>(iter.next(), nextIdx));
+                //iter.remove();
+            }
+        }
+
+        return res;
     }
 
     /**
