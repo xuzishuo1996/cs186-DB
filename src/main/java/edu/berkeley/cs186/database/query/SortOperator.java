@@ -119,14 +119,18 @@ public class SortOperator extends QueryOperator {
         // (proj3_part1): implement
 
         Run res = new Run(transaction, getSchema());
+        // have to do this somehow
+        List<BacktrackingIterator<Record>> iterators = new ArrayList<>();
+        for (Run run: runs) {
+            iterators.add(run.iterator());
+        }
 
         // initialize the priority queue: add the first elems of each input Run into the priority queue
         PriorityQueue<Pair<Record, Integer>> pq = new PriorityQueue<>(runs.size(), new RecordPairComparator());
         for (int i = 0; i < runs.size(); ++i) {
-            BacktrackingIterator<Record> iter = runs.get(i).iterator();
+            BacktrackingIterator<Record> iter = iterators.get(i);
             if (iter.hasNext()) {
                 pq.add(new Pair<>(iter.next(), i));
-                //iter.remove();
             }
         }
 
@@ -135,10 +139,9 @@ public class SortOperator extends QueryOperator {
             Pair<Record, Integer> nextItem = pq.poll();
             res.add(nextItem.getFirst());
             int nextIdx = nextItem.getSecond();
-            BacktrackingIterator<Record> iter = runs.get(nextIdx).iterator();
+            BacktrackingIterator<Record> iter = iterators.get(nextIdx);
             if (iter.hasNext()) {
                 pq.add(new Pair<>(iter.next(), nextIdx));
-                //iter.remove();
             }
         }
 
