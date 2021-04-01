@@ -10,6 +10,10 @@ import edu.berkeley.cs186.database.table.stats.TableStats;
 
 import java.util.*;
 
+/**
+ * for external merge sort
+ * reference: https://cs186berkeley.net/resources/static/notes/n06-Sorting.pdf
+ */
 public class SortOperator extends QueryOperator {
     protected Comparator<Record> comparator;
     private TransactionContext transaction;
@@ -78,6 +82,7 @@ public class SortOperator extends QueryOperator {
     }
 
     /**
+     * Pass 0 of external merge sort
      * Returns a Run containing records from the input iterator in sorted order.
      * You're free to use an in memory sort over all the records using one of
      * Java's built-in sorting methods.
@@ -169,8 +174,15 @@ public class SortOperator extends QueryOperator {
      * @return a list of sorted runs obtained by merging the input runs
      */
     public List<Run> mergePass(List<Run> runs) {
-        // TODO(proj3_part1): implement
-        return Collections.emptyList();
+        // (proj3_part1): implement
+
+        List<Run> resList = new ArrayList<>();
+        for (int i = 0; i < runs.size(); i += numBuffers - 1)
+        {
+            Run run = mergeSortedRuns(runs.subList(i, i + numBuffers - 1));
+            resList.add(run);
+        }
+        return resList;
     }
 
     /**
@@ -186,7 +198,20 @@ public class SortOperator extends QueryOperator {
         Iterator<Record> sourceIterator = getSource().iterator();
 
         // TODO(proj3_part1): implement
-        return makeRun(); // TODO(proj3_part1): replace this!
+        List<Run> sortedRuns = new ArrayList<>();
+        // pass 0: conquer
+        while (sourceIterator.hasNext()) {
+            // load B pages and sort them all at once. B is the number of buffer frames
+            BacktrackingIterator<Record> iter = getBlockIterator(sourceIterator, getSchema(), numBuffers);
+            Run run = sortRun(iter);
+            sortedRuns.add(run);
+        }
+
+        // pass 1: merge - recursive log(B-1)(N/B + 1)
+        while (sortedRuns.size() > 1) {
+            sortedRuns = mergePass(sortedRuns);
+        }
+        return sortedRuns.get(0);
     }
 
     /**
