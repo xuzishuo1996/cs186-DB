@@ -141,16 +141,12 @@ public class SortMergeOperator extends JoinOperator {
         private Record fetchNextRecord() {
             // (proj3_part1): implement
 
-            if (leftRecord == null || rightRecord == null) {
-                return null;
-            }
-
             while (true) {
                 if (leftRecord == null) {
                     return null;
                 }
 
-                if (!marked) {
+                if (!marked && rightRecord != null) {
                     // left < right. compare() is inherited from JoinOperator
                     while (compare(leftRecord, rightRecord) < 0) {
                         // advance left
@@ -164,13 +160,14 @@ public class SortMergeOperator extends JoinOperator {
                     while (compare(leftRecord, rightRecord) > 0) {
                         // advance right
                         if (!rightIterator.hasNext()) {
-                            rightRecord = null;
+                            return null;
                         } else {
                             rightRecord = rightIterator.next();
                         }
                     }
                     // mark the possible start of "same-val-block" in the right part
-                    rightIterator.markNext();
+                    rightIterator.markPrev();
+                    marked = true;
                 }
                 if (rightRecord != null) {
                     if (leftRecord.equals(rightRecord)) {
@@ -183,13 +180,11 @@ public class SortMergeOperator extends JoinOperator {
                         }
                         return joinedRecord;
                     } else {
-                        if (marked) {
-                            rightIterator.reset();
-                            rightRecord = rightIterator.next();
-                        }
+                        rightIterator.reset();
+                        rightRecord = rightIterator.next();
                         marked = false;
                     }
-                } else if (leftIterator.hasNext() && marked) {
+                } else if (leftIterator.hasNext()) {
                     rightIterator.reset();
                     rightRecord = rightIterator.next();
                     marked = false;
