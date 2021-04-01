@@ -86,8 +86,15 @@ public class SortOperator extends QueryOperator {
      * iterator
      */
     public Run sortRun(Iterator<Record> records) {
-        // TODO(proj3_part1): implement
-        return null;
+        // (proj3_part1): implement
+        List<Record> recordList = new ArrayList<>();
+        Run run = new Run(transaction, getSchema());
+        while (records.hasNext()) {
+            recordList.add(records.next());
+        }
+        recordList.sort(comparator);    // comparator is set to RecordComparator in the constructor
+        run.addAll(recordList);
+        return run;
     }
 
     /**
