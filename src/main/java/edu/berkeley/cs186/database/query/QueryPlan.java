@@ -493,6 +493,8 @@ public class QueryPlan {
     }
 
     /**
+     * Pass 1 - Full Scan or Index Scan within a single table
+     *
      * Finds the lowest cost QueryOperator that accesses the given table. First
      * determine the cost of a sequential scan for the given table. Then for
      * every index that can be used on that table, determine the cost of an
@@ -568,6 +570,20 @@ public class QueryPlan {
     }
 
     /**
+     * Pass i (i > 1)
+     * For each pass i, we attempt to join i tables together,
+     * using the results from pass i-1 and pass 1 (minCostSingleAccess).
+     * We are always joining a set of joined tables with one base table.
+     * Pass i produces at least one query plan for all sets of tables of length i that can be joined
+     * without a cross join.
+     *
+     * Note:
+     * 1. only generate left-deep query plans!
+     * 2. do not consider interesting orders.
+     * 3. exclude those with cartesian products.
+     * 4. in our database, we only allow two column predicates in the join condition,
+     *    and a conjunction of single column predicates otherwise.
+     *
      * Iterate through all table sets in the previous pass of the search. For
      * each table set, check each join predicate to see if there is a valid join
      * with a new table. If so, find the minimum cost join. Return a map from
@@ -586,7 +602,7 @@ public class QueryPlan {
             Map<Set<String>, QueryOperator> prevMap,
             Map<Set<String>, QueryOperator> pass1Map) {
         Map<Set<String>, QueryOperator> result = new HashMap<>();
-        // TODO(proj3_part2): implement
+        // (proj3_part2): implement
         // We provide a basic description of the logic you have to implement:
         // For each set of tables in prevMap
         //   For each join predicate listed in this.joinPredicates
@@ -602,6 +618,39 @@ public class QueryPlan {
         //      calculate the cheapest join with the new table (the one you
         //      fetched an operator for from pass1Map) and the previously joined
         //      tables. Then, update the result map if needed.
+
+        for (Map.Entry<Set<String>, QueryOperator> prevEntry: prevMap.entrySet()) {
+            for (JoinPredicate joinPredicate: joinPredicates) {
+                String leftTable = joinPredicate.leftTable;
+                String leftColumn = joinPredicate.leftColumn;
+                String rightTable = joinPredicate.rightTable;
+                String rightColumn = joinPredicate.rightColumn;
+
+                Set<String> prevSet = prevEntry.getKey();
+
+                QueryOperator leftOperator;
+                QueryOperator rightOperator;
+                String newTable;
+                if (prevSet.contains(leftTable) && !prevSet.contains(rightTable)) {
+                    leftOperator = prevEntry.getValue();
+                    rightOperator = minCostSingleAccess(rightTable);
+                    newTable = rightTable;
+                } else if (!prevSet.contains(leftTable) && prevSet.contains(rightTable)) {
+                    leftOperator = minCostSingleAccess(leftTable);
+                    rightOperator = prevEntry.getValue();
+                    newTable = leftTable;
+                } else {
+                    continue;
+                }
+
+                // update the result map
+                QueryOperator bestOperator = minCostJoinType(leftOperator, rightOperator, leftColumn, rightColumn);
+                Set<String> newTables = new HashSet<>(prevEntry.getKey());
+                newTables.add(newTable);
+                result.put(newTables, bestOperator);
+            }
+        }
+
         return result;
     }
 
