@@ -31,10 +31,10 @@ public class TestSingleAccess {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
-    // 2 second max per method tested.
+    // 6 second max per method tested.
     @Rule
     public TestRule globalTimeout = new DisableOnDebug(Timeout.millis((long) (
-                2000 * TimeoutScaling.factor)));
+                6000 * TimeoutScaling.factor)));
 
     @Before
     public void beforeEach() throws Exception {
