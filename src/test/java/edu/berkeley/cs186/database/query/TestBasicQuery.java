@@ -31,10 +31,10 @@ public class TestBasicQuery {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
-    // 1 second max per method tested.
+    // 2 second max per method tested.
     @Rule
     public TestRule globalTimeout = new DisableOnDebug(Timeout.millis((long) (
-                1000 * TimeoutScaling.factor)));
+                2000 * TimeoutScaling.factor)));
 
     @Before
     public void beforeEach() throws Exception {
