@@ -633,10 +633,10 @@ public class QueryPlan {
                 String newTable;
                 if (prevSet.contains(leftTable) && !prevSet.contains(rightTable)) {
                     leftOperator = prevEntry.getValue();
-                    rightOperator = minCostSingleAccess(rightTable);
+                    rightOperator = pass1Map.get(new HashSet<>(Collections.singleton(rightTable)));
                     newTable = rightTable;
                 } else if (!prevSet.contains(leftTable) && prevSet.contains(rightTable)) {
-                    leftOperator = minCostSingleAccess(leftTable);
+                    leftOperator = pass1Map.get(new HashSet<>(Collections.singleton(leftTable)));
                     rightOperator = prevEntry.getValue();
                     newTable = leftTable;
                 } else {
@@ -687,19 +687,33 @@ public class QueryPlan {
      * @return an iterator of records that is the result of this query
      */
     public Iterator<Record> execute() {
-        // TODO(proj3_part2): implement
+        // (proj3_part2): implement
         // Pass 1: For each table, find the lowest cost QueryOperator to access
         // the table. Construct a mapping of each table name to its lowest cost
         // operator.
-        //
+        Map<Set<String>, QueryOperator> pass1Map = new HashMap<>();
+        for (String table: tableNames) {
+            Set<String> consideredTables = new HashSet<>(Collections.singleton(table));
+            consideredTables.add(table);
+            pass1Map.put(consideredTables, minCostSingleAccess(table));
+        }
+
         // Pass i: On each pass, use the results from the previous pass to find
         // the lowest cost joins with each table from pass 1. Repeat until all
         // tables have been joined.
-        //
+        Map<Set<String>, QueryOperator> prevMap = pass1Map;
+        for (int i = 2; i <= tableNames.size(); ++i) {
+            prevMap = minCostJoins(prevMap, pass1Map);
+        }
+
         // Set the final operator to the lowest cost operator from the last
         // pass, add group by and project operators, and return an iterator over
         // the final operator
-        return this.executeNaive(); // TODO(proj3_part2): Replace this!
+        this.finalOperator = minCostOperator(prevMap);
+        addGroupBy();
+        addProjects();
+
+        return finalOperator.iterator();
     }
 
     // EXECUTE NAIVE ///////////////////////////////////////////////////////////
