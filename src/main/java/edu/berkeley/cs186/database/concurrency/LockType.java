@@ -84,14 +84,28 @@ public enum LockType {
      * requiring another lock (e.g. an S lock can be substituted with
      * an X lock, because an X lock allows the transaction to do everything
      * the S lock allowed it to do).
+     *
+     * This is only the case if a transaction having substitute can do everything that a transaction having required can do.
+     * Another way of looking at this is:
+     * let a transaction request the required lock. Can there be any problems if we secretly give it the substitute lock instead?
+     *
+     * refer to Substitutability Matrix in TestLockType.java
      */
     public static boolean substitutable(LockType substitute, LockType required) {
         if (required == null || substitute == null) {
             throw new NullPointerException("null lock type");
         }
-        // TODO(proj4_part1): implement
+        // (proj4_part1): implement
 
-        return false;
+        switch (substitute) {
+            case NL: return required == NL;
+            case IS: return (required == NL || required == IS);
+            case IX: return (required == NL || required == IS || required == IX);
+            case S: return (required == NL || required == IS || required == S);
+            case SIX: return required != X;
+            case X: return true;
+            default: return false;
+        }
     }
 
     /**
