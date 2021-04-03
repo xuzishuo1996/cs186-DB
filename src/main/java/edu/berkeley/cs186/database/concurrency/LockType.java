@@ -58,14 +58,25 @@ public enum LockType {
     /**
      * This method returns if parentLockType has permissions to grant a childLockType
      * on a child.
+     *
+     * refer to Parent Matrix in TestLockType.java
      */
     public static boolean canBeParentLock(LockType parentLockType, LockType childLockType) {
         if (parentLockType == null || childLockType == null) {
             throw new NullPointerException("null lock type");
         }
-        // TODO(proj4_part1): implement
+        // (proj4_part1): implement
 
-        return false;
+        switch (parentLockType) {
+            case NL:
+            case S:
+            case X:
+                return childLockType == NL;
+            case IS: return (childLockType == NL || childLockType == IS || childLockType == S);
+            case IX: return true;
+            case SIX: return (childLockType == NL || childLockType == SIX);
+            default: return false;
+        }
     }
 
     /**
