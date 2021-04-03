@@ -16,14 +16,24 @@ public enum LockType {
      * each other. If a transaction can hold lock type A on a resource
      * at the same time another transaction holds lock type B on the same
      * resource, the lock types are compatible.
+     *
+     * refer to Compatibility Matrix in TestLockType.java
      */
     public static boolean compatible(LockType a, LockType b) {
         if (a == null || b == null) {
             throw new NullPointerException("null lock type");
         }
-        // TODO(proj4_part1): implement
+        // (proj4_part1): implement
 
-        return false;
+        switch (a) {
+            case NL: return true;
+            case IS: return b != X;
+            case IX: return b == NL || b == IS || b == IX;
+            case S: return b == NL || b == IS || b == S;
+            case SIX: return b == NL || b == IS;
+            case X: return b == NL;
+            default: return false;
+        }
     }
 
     /**
