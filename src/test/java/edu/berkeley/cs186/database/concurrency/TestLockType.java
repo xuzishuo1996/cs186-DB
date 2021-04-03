@@ -22,7 +22,7 @@ public class TestLockType {
             200 * TimeoutScaling.factor)));
 
     /**
-     * Compatibility Matrix
+     * Compatibility Matrix - whether it is compatible to let T1 hold lock in left and T2 hold lock in top row at the same time.
      * (Boolean value in cell answers is `left` compatible with `top`?)
      *
      *     | NL  | IS  | IX  |  S  | SIX |  X
@@ -123,13 +123,22 @@ public class TestLockType {
      * ----+-----+-----+-----+-----+-----+-----
      * S   |  T  |  F  |  F  |  F  |  F  |  F
      * ----+-----+-----+-----+-----+-----+-----
-     * SIX |  T  |  F  |  F  |  F  |  T  |  F
+     * SIX |  T  |  F  |  T  |  F  |  F  |  T
      * ----+-----+-----+-----+-----+-----+-----
      * X   |  T  |  F  |  F  |  F  |  F  |  F
      * ----+-----+-----+-----+-----+-----+-----
      *
      * The filled in cells are covered by the public test.
      * You can expect the blank cells to be covered by the hidden tests!
+     *
+     * To Get	        Must have on all ancestors
+     * IS or S	        IS or IX
+     * IX, SIX or X	    IX or SIX
+     *
+     * Note: This differs from how its presented in lecture,
+     *       where SIX(A) allows a transaction to request SIX locks on children of A.
+     *       We disallow this in the project
+     *       since the S aspect of the SIX child would be redundant.
      */
 
     @Test

@@ -74,7 +74,7 @@ public enum LockType {
                 return childLockType == NL;
             case IS: return (childLockType == NL || childLockType == IS || childLockType == S);
             case IX: return true;
-            case SIX: return (childLockType == NL || childLockType == SIX);
+            case SIX: return (childLockType == NL || childLockType == IX || childLockType == X);
             default: return false;
         }
     }
