@@ -245,23 +245,29 @@ public class LockManager {
             }
 
             Lock lockToAcquire = new Lock(name, lockType, transactionNum);
-            if (shouldBlock) {
-                transaction.block();
-
-                // create a LockRequest and place it at the end of the waitingQueue
-                LockRequest lockRequest = new LockRequest(transaction, lockToAcquire);
-                resourceEntry.waitingQueue.offerLast(lockRequest);
-            } else {
+            if (!shouldBlock) {
                 transactionLocks.putIfAbsent(transactionNum, new ArrayList<>());
                 transactionLocks.get(transactionNum).add(lockToAcquire);
 
                 // putIfAbsent already used in getResourceEntry() helper method
                 resourceEntry.locks.add(lockToAcquire);
+            } else {
+                // create a LockRequest and place it at the end of the waitingQueue
+                LockRequest lockRequest = new LockRequest(transaction, lockToAcquire);
+                resourceEntry.waitingQueue.offerLast(lockRequest);
+
+                transaction.prepareBlock();
             }
         }
-//        if (shouldBlock) {
-//            transaction.block();
-//        }
+
+        // To block a transaction, call Transaction#prepareBlock inside the synchronized block,
+        // and then call Transaction#block outside the synchronized block.
+        // The Transaction#prepareBlock needs to be in the synchronized block to avoid a race condition
+        // where the transaction may be dequeued between the time it leaves the synchronized block
+        // and the time it actually blocks.
+        if (shouldBlock) {
+            transaction.block();
+        }
     }
 
     /**
@@ -279,7 +285,11 @@ public class LockManager {
         // TODO(proj4_part1): implement
         // You may modify any part of this method.
         synchronized (this) {
-            
+            // check if a lock on "name" is held by "transaction"
+            ResourceEntry resourceEntry = getResourceEntry(name);
+            if (resourceEntry.getTransactionLockType(transaction.getTransNum()) == LockType.NL) {
+                throw new NoLockHeldException("No lock held by " + transaction + " for " + name);
+            }
         }
     }
 
