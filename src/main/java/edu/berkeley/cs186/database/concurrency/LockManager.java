@@ -157,16 +157,11 @@ public class LockManager {
             while (requests.hasNext()) {
                 LockRequest request = requests.next();
                 Lock lock = request.lock;
+                long transactionNum = request.transaction.getTransNum();
 
-                if (compatible(lock.lockType, -1)) {    // grant the lock
-                    long transactionNum = request.transaction.getTransNum();
+                if (compatible(lock.lockType, transactionNum)) {    // grant the lock
 
-                    // add the lock to the map of transaction locks
-                    transactionLocks.putIfAbsent(transactionNum, new ArrayList<>());
-                    transactionLocks.get(transactionNum).add(lock);
-
-                    // add the lock to the list of resource locks
-                    locks.add(lock);    // putIfAbsent already used in getResourceEntry() helper method
+                    grantOrUpdateLock(lock);
 
                     // the first request in the queue has been processed and remove it
                     requests.remove();
