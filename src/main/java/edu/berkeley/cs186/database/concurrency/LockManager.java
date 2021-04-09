@@ -323,8 +323,13 @@ public class LockManager {
      * held.
      */
     public synchronized LockType getLockType(TransactionContext transaction, ResourceName name) {
-        // TODO(proj4_part1): implement
+        // (proj4_part1): implement
         ResourceEntry resourceEntry = getResourceEntry(name);
+        for (Lock lock: resourceEntry.locks) {
+            if (lock.transactionNum == transaction.getTransNum()) {
+                return lock.lockType;
+            }
+        }
         return LockType.NL;
     }
 
