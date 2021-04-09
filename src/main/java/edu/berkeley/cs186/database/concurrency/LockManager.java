@@ -142,6 +142,13 @@ public class LockManager {
          * Grant locks to requests from front to back of the queue, stopping
          * when the next lock cannot be granted. Once a request is completely
          * granted, the transaction that made the request can be unblocked.
+         *
+         * The request at the front of the queue is considered, and if it doesn't conflict with any of the existing
+         * locks on the resource, it should be removed from the queue and:
+         *      1. the transaction that made the request should be given the lock
+         *      2. any locks that the request stated should be released are released
+         *      3. the transaction that made the request should be unblocked
+         * The previous step should be repeated until the first request on the queue cannot be satisfied or the queue is empty.
          */
         private void processQueue() {
             Iterator<LockRequest> requests = waitingQueue.iterator();
@@ -151,15 +158,20 @@ public class LockManager {
                 LockRequest request = requests.next();
                 Lock lock = request.lock;
 
-                if (compatible(lock.lockType, -1)) {
-                    // grant the lock
+                if (compatible(lock.lockType, -1)) {    // grant the lock
                     long transactionNum = request.transaction.getTransNum();
+
+                    // add the lock to the map of transaction locks
                     transactionLocks.putIfAbsent(transactionNum, new ArrayList<>());
                     transactionLocks.get(transactionNum).add(lock);
 
-                    // putIfAbsent already used in getResourceEntry() helper method
-                    locks.add(lock);
+                    // add the lock to the list of resource locks
+                    locks.add(lock);    // putIfAbsent already used in getResourceEntry() helper method
 
+                    // the first request in the queue has been processed and remove it
+                    requests.remove();
+
+                    // unblock the corresponding transaction
                     request.transaction.unblock();
                 } else {
                     break;  // stop
