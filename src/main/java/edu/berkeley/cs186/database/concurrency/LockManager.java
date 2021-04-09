@@ -87,7 +87,19 @@ public class LockManager {
          */
         public void grantOrUpdateLock(Lock lock) {
             // TODO(proj4_part1): implement
-            return;
+
+            long transactionNum = lock.transactionNum;
+            // grant lock
+            if (getTransactionLockType(transactionNum).equals(LockType.NL)) {
+
+                transactionLocks.putIfAbsent(transactionNum, new ArrayList<>());
+                transactionLocks.get(transactionNum).add(lock);
+
+                // putIfAbsent already used in getResourceEntry() helper method
+                locks.add(lock);
+            } else {    // update lock
+                // TODO:
+            }
         }
 
         /**
@@ -254,7 +266,7 @@ public class LockManager {
      */
     public void acquire(TransactionContext transaction, ResourceName name,
                         LockType lockType) throws DuplicateLockRequestException {
-        // TODO(proj4_part1): implement
+        // (proj4_part1): implement
         // You may modify any part of this method. You are not required to keep all your
         // code within the given synchronized block and are allowed to move the
         // synchronized block elsewhere if you wish.
@@ -279,11 +291,7 @@ public class LockManager {
 
             Lock lockToAcquire = new Lock(name, lockType, transactionNum);
             if (!shouldBlock) {
-                transactionLocks.putIfAbsent(transactionNum, new ArrayList<>());
-                transactionLocks.get(transactionNum).add(lockToAcquire);
-
-                // putIfAbsent already used in getResourceEntry() helper method
-                resourceEntry.locks.add(lockToAcquire);
+                resourceEntry.grantOrUpdateLock(lockToAcquire);
             } else {
                 // create a LockRequest and place it at the end of the waitingQueue
                 LockRequest lockRequest = new LockRequest(transaction, lockToAcquire);
@@ -315,7 +323,7 @@ public class LockManager {
      */
     public void release(TransactionContext transaction, ResourceName name)
             throws NoLockHeldException {
-        // TODO(proj4_part1): implement
+        // (proj4_part1): implement
         // You may modify any part of this method.
         synchronized (this) {
             // check if a lock on "name" is held by "transaction"
