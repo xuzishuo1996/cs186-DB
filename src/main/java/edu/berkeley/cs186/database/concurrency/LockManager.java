@@ -95,8 +95,10 @@ public class LockManager {
          * lock has been granted before.
          */
         public void releaseLock(Lock lock) {
-            // TODO(proj4_part1): implement
-            return;
+            // (proj4_part1): implement
+
+            locks.remove(lock);
+            processQueue(lock);
         }
 
         /**
@@ -118,11 +120,27 @@ public class LockManager {
          * when the next lock cannot be granted. Once a request is completely
          * granted, the transaction that made the request can be unblocked.
          */
-        private void processQueue() {
+        private void processQueue(Lock lock) {
             Iterator<LockRequest> requests = waitingQueue.iterator();
 
-            // TODO(proj4_part1): implement
-            return;
+            // (proj4_part1): implement
+            while (requests.hasNext()) {
+                LockRequest request = requests.next();
+
+                if (compatible(lock.lockType, -1)) {
+                    // grant the lock
+                    long transactionNum = request.transaction.getTransNum();
+                    transactionLocks.putIfAbsent(transactionNum, new ArrayList<>());
+                    transactionLocks.get(transactionNum).add(lock);
+
+                    // putIfAbsent already used in getResourceEntry() helper method
+                    locks.add(lock);
+
+                    request.transaction.unblock();
+                } else {
+                    break;  // stop
+                }
+            }
         }
 
         /**
@@ -168,17 +186,18 @@ public class LockManager {
     }
 
     /**
-     * Helper method to check whether a transaction holds a lock on a resource.
+     * Helper method to return the lock held by the transaction on a resource.
+     * Returns null if no such lock held.
      */
-    private boolean containsLock(long transactionNum, ResourceName name) {
+    private Lock getLock(long transactionNum, ResourceName name) {
         transactionLocks.putIfAbsent(transactionNum, new ArrayList<>());
         List<Lock> locks = transactionLocks.get(transactionNum);
         for (Lock lock: locks) {
             if (lock.name.equals(name)) {
-                return true;
+                return lock;
             }
         }
-        return false;
+        return null;
     }
 
     /**
@@ -241,7 +260,7 @@ public class LockManager {
         synchronized (this) {
             // check duplicate lock request
             long transactionNum = transaction.getTransNum();
-            if (containsLock(transactionNum, name)) {
+            if (getLock(transactionNum, name) != null) {
                 throw new DuplicateLockRequestException("Duplicate lock request from transaction "
                         + transactionNum + " on " + name);
             }
@@ -303,7 +322,7 @@ public class LockManager {
                 throw new NoLockHeldException("No lock held by " + transaction + " for " + name);
             }
 
-
+            resourceEntry.releaseLock(getLock(transaction.getTransNum(), name));
         }
     }
 
