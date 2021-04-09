@@ -257,13 +257,44 @@ public class LockManager {
     public void acquireAndRelease(TransactionContext transaction, ResourceName name,
                                   LockType lockType, List<ResourceName> releaseNames)
             throws DuplicateLockRequestException, NoLockHeldException {
-        // TODO(proj4_part1): implement
+        // (proj4_part1): implement
         // You may modify any part of this method. You are not required to keep
         // all your code within the given synchronized block and are allowed to
         // move the synchronized block elsewhere if you wish.
         boolean shouldBlock = false;
         synchronized (this) {
-            
+            long transactionNum = transaction.getTransNum();
+
+            if (!getLockType(transaction, name).equals(LockType.NL)) {
+                throw new DuplicateLockRequestException("Duplicate lock request from transaction "
+                        + transactionNum + " on " + name);
+            }
+            for (ResourceName resourceName : releaseNames) {
+                if (getLockType(transaction, resourceName).equals(LockType.NL)) {
+                    throw new NoLockHeldException("No lock held by " + transactionNum + " for " + resourceName);
+                }
+            }
+
+            ResourceEntry resourceEntry = getResourceEntry(name);
+
+            // check if the new lock is not compatible with other locks for the resource
+            shouldBlock = !resourceEntry.compatible(lockType, -1);  // no except
+
+            Lock lockToAcquire = new Lock(name, lockType, transactionNum);
+            if (!shouldBlock) {
+                resourceEntry.grantOrUpdateLock(lockToAcquire);
+
+                // release
+                for (ResourceName resourceName : releaseNames) {
+                    resourceEntry.releaseLock(getLock(transactionNum, resourceName));
+                }
+            } else {
+                // create a LockRequest and place it at the front of the waitingQueue
+                LockRequest lockRequest = new LockRequest(transaction, lockToAcquire);
+                resourceEntry.addToQueue(lockRequest, true);
+
+                transaction.prepareBlock();
+            }
         }
         if (shouldBlock) {
             transaction.block();
