@@ -58,8 +58,25 @@ public class LockManager {
          * useful when a transaction tries to replace a lock it already has on
          * the resource.
          */
-        public boolean checkCompatible(LockType lockType, long except) {
-            // TODO(proj4_part1): implement
+        public boolean compatible(LockType lockType, long except) {
+            // (proj4_part1): implement
+            for (Lock lock: locks) {
+                if (lock.transactionNum != except && !LockType.compatible(lockType, lock.lockType)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /**
+         * Check if there is LockRequest waiting for resource
+         */
+        public boolean waitingForResource(ResourceName name) {
+            for (LockRequest lockRequest : waitingQueue) {
+                if (lockRequest.lock.name.equals(name)) {
+                    return true;
+                }
+            }
             return false;
         }
 
@@ -87,8 +104,13 @@ public class LockManager {
          * the end otherwise.
          */
         public void addToQueue(LockRequest request, boolean addFront) {
-            // TODO(proj4_part1): implement
-            return;
+            // (proj4_part1): implement
+
+            if (addFront) {
+                waitingQueue.offerFirst(request);
+            } else {
+                waitingQueue.offerLast(request);
+            }
         }
 
         /**
@@ -227,21 +249,11 @@ public class LockManager {
             ResourceEntry resourceEntry = getResourceEntry(name);
 
             // check if the new lock is not compatible with other locks for the resource
-            for (Lock lock: resourceEntry.locks) {
-                if (LockType.compatible(lockType, lock.lockType)) {
-                    shouldBlock = true;
-                    break;
-                }
-            }
+            shouldBlock = !resourceEntry.compatible(lockType, -1);  // no except
 
             // check if there are other transactions in the queue for the resource
             if (!shouldBlock) {
-                for (LockRequest lockRequest : resourceEntry.waitingQueue) {
-                    if (lockRequest.lock.name.equals(name)) {
-                        shouldBlock = true;
-                        break;
-                    }
-                }
+                shouldBlock = resourceEntry.waitingForResource(name);
             }
 
             Lock lockToAcquire = new Lock(name, lockType, transactionNum);
@@ -254,7 +266,7 @@ public class LockManager {
             } else {
                 // create a LockRequest and place it at the end of the waitingQueue
                 LockRequest lockRequest = new LockRequest(transaction, lockToAcquire);
-                resourceEntry.waitingQueue.offerLast(lockRequest);
+                resourceEntry.addToQueue(lockRequest, false);
 
                 transaction.prepareBlock();
             }
@@ -290,6 +302,8 @@ public class LockManager {
             if (resourceEntry.getTransactionLockType(transaction.getTransNum()) == LockType.NL) {
                 throw new NoLockHeldException("No lock held by " + transaction + " for " + name);
             }
+
+
         }
     }
 
