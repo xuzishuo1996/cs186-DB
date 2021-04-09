@@ -265,7 +265,7 @@ public class LockManager {
         synchronized (this) {
             long transactionNum = transaction.getTransNum();
 
-            if (!getLockType(transaction, name).equals(LockType.NL)) {
+            if (!getLockType(transaction, name).equals(LockType.NL) && !releaseNames.contains(name)) {
                 throw new DuplicateLockRequestException("Duplicate lock request from transaction "
                         + transactionNum + " on " + name);
             }
@@ -278,16 +278,17 @@ public class LockManager {
             ResourceEntry resourceEntry = getResourceEntry(name);
 
             // check if the new lock is not compatible with other locks for the resource
-            shouldBlock = !resourceEntry.compatible(lockType, -1);  // no except
+            shouldBlock = !resourceEntry.compatible(lockType, transactionNum);  // no except
 
             Lock lockToAcquire = new Lock(name, lockType, transactionNum);
             if (!shouldBlock) {
-                resourceEntry.grantOrUpdateLock(lockToAcquire);
-
                 // release
                 for (ResourceName resourceName : releaseNames) {
-                    resourceEntry.releaseLock(getLock(transactionNum, resourceName));
+                    getResourceEntry(resourceName).releaseLock(getLock(transactionNum, resourceName));
                 }
+
+                // acquire
+                resourceEntry.grantOrUpdateLock(lockToAcquire);
             } else {
                 // create a LockRequest and place it at the front of the waitingQueue
                 LockRequest lockRequest = new LockRequest(transaction, lockToAcquire);
