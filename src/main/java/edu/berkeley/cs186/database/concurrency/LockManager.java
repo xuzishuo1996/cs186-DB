@@ -98,7 +98,8 @@ public class LockManager {
             // (proj4_part1): implement
 
             locks.remove(lock);
-            processQueue(lock);
+            transactionLocks.get(lock.transactionNum).remove(lock);
+            processQueue();
         }
 
         /**
@@ -120,12 +121,13 @@ public class LockManager {
          * when the next lock cannot be granted. Once a request is completely
          * granted, the transaction that made the request can be unblocked.
          */
-        private void processQueue(Lock lock) {
+        private void processQueue() {
             Iterator<LockRequest> requests = waitingQueue.iterator();
 
             // (proj4_part1): implement
             while (requests.hasNext()) {
                 LockRequest request = requests.next();
+                Lock lock = request.lock;
 
                 if (compatible(lock.lockType, -1)) {
                     // grant the lock
