@@ -108,6 +108,21 @@ public class LockManager {
          */
         public LockType getTransactionLockType(long transaction) {
             // TODO(proj4_part1): implement
+
+            if (locks.isEmpty()) {
+                return LockType.NL;
+            }
+            List<Lock> locksOfAllResources = transactionLocks.get(transaction);
+            if (locksOfAllResources == null || locksOfAllResources.isEmpty()) {
+                return LockType.NL;
+            }
+
+            ResourceName currResourceName = locks.get(0).name;
+            for (Lock lock: locksOfAllResources) {
+                if (lock.name.equals(currResourceName)) {
+                    return lock.lockType;
+                }
+            }
             return LockType.NL;
         }
 
@@ -128,6 +143,20 @@ public class LockManager {
     private ResourceEntry getResourceEntry(ResourceName name) {
         resourceEntries.putIfAbsent(name, new ResourceEntry());
         return resourceEntries.get(name);
+    }
+
+    /**
+     * Helper method to check whether a transaction holds a lock on a resource.
+     */
+    private boolean containsLock(long transactionNum, ResourceName name) {
+        transactionLocks.putIfAbsent(transactionNum, new ArrayList<>());
+        List<Lock> locks = transactionLocks.get(transactionNum);
+        for (Lock lock: locks) {
+            if (lock.name.equals(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -188,11 +217,51 @@ public class LockManager {
         // synchronized block elsewhere if you wish.
         boolean shouldBlock = false;
         synchronized (this) {
-            
+            // check duplicate lock request
+            long transactionNum = transaction.getTransNum();
+            if (containsLock(transactionNum, name)) {
+                throw new DuplicateLockRequestException("Duplicate lock request from transaction "
+                        + transactionNum + " on " + name);
+            }
+
+            ResourceEntry resourceEntry = getResourceEntry(name);
+
+            // check if the new lock is not compatible with other locks for the resource
+            for (Lock lock: resourceEntry.locks) {
+                if (LockType.compatible(lockType, lock.lockType)) {
+                    shouldBlock = true;
+                    break;
+                }
+            }
+
+            // check if there are other transactions in the queue for the resource
+            if (!shouldBlock) {
+                for (LockRequest lockRequest : resourceEntry.waitingQueue) {
+                    if (lockRequest.lock.name.equals(name)) {
+                        shouldBlock = true;
+                        break;
+                    }
+                }
+            }
+
+            Lock lockToAcquire = new Lock(name, lockType, transactionNum);
+            if (shouldBlock) {
+                transaction.block();
+
+                // create a LockRequest and place it at the end of the waitingQueue
+                LockRequest lockRequest = new LockRequest(transaction, lockToAcquire);
+                resourceEntry.waitingQueue.offerLast(lockRequest);
+            } else {
+                transactionLocks.putIfAbsent(transactionNum, new ArrayList<>());
+                transactionLocks.get(transactionNum).add(lockToAcquire);
+
+                // putIfAbsent already used in getResourceEntry() helper method
+                resourceEntry.locks.add(lockToAcquire);
+            }
         }
-        if (shouldBlock) {
-            transaction.block();
-        }
+//        if (shouldBlock) {
+//            transaction.block();
+//        }
     }
 
     /**
