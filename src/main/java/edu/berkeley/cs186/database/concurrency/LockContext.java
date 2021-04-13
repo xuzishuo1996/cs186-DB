@@ -1,5 +1,6 @@
 package edu.berkeley.cs186.database.concurrency;
 
+import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.TransactionContext;
 import edu.berkeley.cs186.database.common.Pair;
 
@@ -16,7 +17,7 @@ public class LockContext {
     // You should not remove any of these fields. You may add additional
     // fields/methods as you see fit.
 
-    // The underlying lock manager.
+    // The underlying lock manager. singleton
     protected final LockManager lockman;
 
     // The parent LockContext object, or null if this LockContext is at the top of the hierarchy.
@@ -81,6 +82,25 @@ public class LockContext {
     }
 
     /**
+     * Helper method to check whether the requested lock is compliant with its parent locks
+     */
+    private boolean isValidLockRequest(TransactionContext transaction, LockType lockType) {
+        if (parent == null) {
+            return true;
+        }
+
+        List<Lock> parentLocks = lockman.getLocks(parent.name);
+
+        for (Lock lock: parentLocks) {
+            if (lock.transactionNum.equals(transaction.getTransNum())
+                    && LockType.canBeParentLock(lock.lockType, lockType)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Acquire a `lockType` lock, for transaction `transaction`.
      *
      * Note: you must make any necessary updates to numChildLocks, or else calls
@@ -93,9 +113,32 @@ public class LockContext {
      */
     public void acquire(TransactionContext transaction, LockType lockType)
             throws InvalidLockException, DuplicateLockRequestException {
-        // TODO(proj4_part2): implement
+        // (proj4_part2): implement
 
-        return;
+        long transactionNum = transaction.getTransNum();
+
+        // check
+        if (readonly) {
+            throw new UnsupportedOperationException("This LockContext is read-only:\n" + toString());
+        }
+        if (lockman.getLockType(transaction, name).equals(lockType)) {
+            throw new DuplicateLockRequestException("Duplicate lock request from transaction "
+                    + transactionNum + " on " + name);
+        }
+        if (!isValidLockRequest(transaction, lockType)) {
+            throw new InvalidLockException("The request from transaction "
+                    + transactionNum + " on " + name + " is invalid!");
+        }
+
+        // invoke underlying LockManager's aquire()
+        lockman.acquire(transaction, name, lockType);
+
+        // update numChildLocks
+        if (parent != null) {
+            Map<Long, Integer> parentNumChildLocks = parent.numChildLocks;
+            parentNumChildLocks.putIfAbsent(transactionNum, 0);
+            parentNumChildLocks.put(transactionNum, parentNumChildLocks.get(transactionNum) + 1);
+        }
     }
 
     /**
