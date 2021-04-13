@@ -164,7 +164,7 @@ public class LockContext {
      */
     public void release(TransactionContext transaction)
             throws NoLockHeldException, InvalidLockException {
-        // TODO(proj4_part2): implement
+        // (proj4_part2): implement
 
         long transactionNum = transaction.getTransNum();
 
@@ -263,8 +263,8 @@ public class LockContext {
      */
     public LockType getExplicitLockType(TransactionContext transaction) {
         if (transaction == null) return LockType.NL;
-        // TODO(proj4_part2): implement
-        return LockType.NL;
+        // (proj4_part2): implement
+        return lockman.getLockType(transaction, name);
     }
 
     /**
@@ -272,11 +272,36 @@ public class LockContext {
      * implicitly (e.g. explicit S lock at higher level implies S lock at this
      * level) or explicitly. Returns NL if there is no explicit nor implicit
      * lock.
+     *
+     * An intent lock does not implicitly grant lock-acquiring privileges to lower levels,
+     * if a transaction only has SIX(database), tableContext.getEffectiveLockType(transaction) should return S (not SIX),
+     * since the transaction implicitly has S on table via the SIX lock,
+     * but not the IX part of the SIX lock (which is only available at the database level).
+     * It is possible for the explicit lock type to be one type, and the effective lock type to be a different lock type,
+     * specifically if an ancestor has a SIX lock.
      */
     public LockType getEffectiveLockType(TransactionContext transaction) {
         if (transaction == null) return LockType.NL;
-        // TODO(proj4_part2): implement
-        return LockType.NL;
+        // (proj4_part2): implement
+
+        LockType currType = getExplicitLockType(transaction);
+        if (!currType.equals(LockType.NL)) {
+            return currType;
+        }
+
+        LockContext currContext = parent;
+        while (currContext != null && currType.equals(LockType.NL)) {
+            currType = currContext.getEffectiveLockType(transaction);
+            currContext = currContext.parent;
+        }
+
+        if (currType.equals(LockType.IS) || currType.equals(LockType.IX)) {
+            return LockType.NL;
+        } else if (currType.equals(LockType.SIX)) {
+            return LockType.S;
+        } else {
+            return currType;
+        }
     }
 
     /**
