@@ -1,8 +1,6 @@
 package edu.berkeley.cs186.database.concurrency;
 
-import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.TransactionContext;
-import edu.berkeley.cs186.database.common.Pair;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -84,7 +82,7 @@ public class LockContext {
     /**
      * Helper method to check whether the requested lock is compliant with its parent locks
      */
-    private boolean isValidLockRequest(TransactionContext transaction, LockType lockType) {
+    private boolean isValidAcquireRequest(TransactionContext transaction, LockType lockType) {
         if (parent == null) {
             return true;
         }
@@ -125,12 +123,13 @@ public class LockContext {
             throw new DuplicateLockRequestException("Duplicate lock request from transaction "
                     + transactionNum + " on " + name);
         }
-        if (!isValidLockRequest(transaction, lockType)) {
-            throw new InvalidLockException("The request from transaction "
-                    + transactionNum + " on " + name + " is invalid!");
+        if (!isValidAcquireRequest(transaction, lockType)) {
+            throw new InvalidLockException(
+                    String.format("The acquire request for %s on %s from transaction %s is invalid!",
+                            lockType, name, transactionNum));
         }
 
-        // invoke underlying LockManager's aquire()
+        // invoke underlying LockManager's acquire()
         lockman.acquire(transaction, name, lockType);
 
         // update numChildLocks
@@ -139,6 +138,17 @@ public class LockContext {
             parentNumChildLocks.putIfAbsent(transactionNum, 0);
             parentNumChildLocks.put(transactionNum, parentNumChildLocks.get(transactionNum) + 1);
         }
+    }
+
+    /**
+     * Helper to check whether it is valid to release the lock in the hierarchy.
+     *
+     * It is invalid for the transaction to release the lock on curr resource
+     * while holding the locks on child resources.
+     */
+    private boolean isValidReleaseRequest(TransactionContext transaction) {
+        return !(numChildLocks.containsKey(transaction.getTransNum())
+                && numChildLocks.get(transaction.getTransNum()) > 0);
     }
 
     /**
@@ -156,7 +166,30 @@ public class LockContext {
             throws NoLockHeldException, InvalidLockException {
         // TODO(proj4_part2): implement
 
-        return;
+        long transactionNum = transaction.getTransNum();
+
+        // check
+        if (readonly) {
+            throw new UnsupportedOperationException("This LockContext is read-only:\n" + toString());
+        }
+        if (lockman.getLockType(transaction, name).equals(LockType.NL)) {
+            throw new NoLockHeldException("No lock held by transaction "
+                    + transactionNum + " on " + name);
+        }
+        if (!isValidReleaseRequest(transaction)) {
+            throw new InvalidLockException(
+                    String.format("The release request on %s from transaction %s is invalid!",
+                            name, transactionNum));
+        }
+
+        // invoke underlying LockManager's release()
+        lockman.release(transaction, name);
+
+        // update numChildLocks
+        if (parent != null) {
+            Map<Long, Integer> parentNumChildLocks = parent.numChildLocks;
+            parentNumChildLocks.put(transactionNum, parentNumChildLocks.get(transactionNum) - 1);
+        }
     }
 
     /**
