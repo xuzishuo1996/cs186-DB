@@ -101,9 +101,9 @@ public enum LockType {
             case NL: return required == NL;
             case IS: return (required == NL || required == IS);
             case IX: return (required == NL || required == IS || required == IX);
-            case S: return (required == NL || required == IS || required == S);
+            case S: return (required == NL || required == S);
             case SIX: return required != X;
-            case X: return true;
+            case X: return (required == NL || required == S || required == X);
             default: return false;
         }
     }

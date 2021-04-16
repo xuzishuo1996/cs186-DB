@@ -53,19 +53,18 @@ public class LockUtil {
             lockContext.promote(transaction, LockType.SIX);
             return;
         }
-//
+
 //        // If the current lock type is an intent lock
 //        if (explicitLockType.isIntent()) {
 //            lockContext.promote(transaction, requestType);
+//            return;
 //        }
 
         // require parent locks recursively
         LockType requiredParentLock = LockType.parentLock(requestType);
         if (parentContext != null) {
             ensureSufficientLockHeld(parentContext, requiredParentLock);
-            //ensureProperLocksOnAncestors(lockContext, requestType);
         }
-        // ensureProperLocksOnAncestors(lockContext, requestType);
 
         if (lockContext.getExplicitLockType(transaction).equals(LockType.NL)) {
             lockContext.acquire(transaction, requestType);
@@ -75,36 +74,6 @@ public class LockUtil {
             } catch (InvalidLockException e) {
                 lockContext.escalate(transaction);
                 ensureSufficientLockHeld(lockContext, requestType);
-            }
-        }
-    }
-
-    // (proj4_part2) add any helper methods you want
-    private static void ensureProperLocksOnAncestors(LockContext lockContext, LockType lockType) {
-        TransactionContext transaction = TransactionContext.getTransaction();
-        assert transaction != null;
-
-        LockContext parentContext = lockContext.parentContext();
-        LockType requiredParentLockType = LockType.parentLock(lockType);
-
-        if (parentContext != null) {
-            LockType parentLock = parentContext.getExplicitLockType(transaction);
-            if (parentLock.equals(LockType.NL)) {
-                ensureProperLocksOnAncestors(parentContext, requiredParentLockType);
-                parentContext.acquire(transaction, requiredParentLockType);
-            } else if (!LockType.substitutable(parentLock, requiredParentLockType)) {
-
-                while (parentContext != null) {
-                    try {
-                        parentContext.promote(transaction, requiredParentLockType);
-                    } catch (InvalidLockException e) {
-                        parentContext.escalate(transaction);
-                        ensureSufficientLockHeld(parentContext, requiredParentLockType);
-                    }
-
-                    parentContext = parentContext.parentContext();
-                    requiredParentLockType = LockType.parentLock(requiredParentLockType);
-                }
             }
         }
     }
