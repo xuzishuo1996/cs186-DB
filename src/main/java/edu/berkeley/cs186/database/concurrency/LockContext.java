@@ -10,6 +10,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * of multigranularity locking. Calls to acquire/release/etc. locks should
  * be mostly done through a LockContext, which provides access to locking
  * methods at a certain point in the hierarchy (database, table X, etc.)
+ *
+ * There is exactly ONE LockContext for each resource:
+ * calling childContext with the same parameters multiple times returns the same object.
  */
 public class LockContext {
     // You should not remove any of these fields. You may add additional
@@ -247,16 +250,17 @@ public class LockContext {
         // (proj4_part2): implement
 
         long transactionNum = transaction.getTransNum();
+        LockType oldLockType = lockman.getLockType(transaction, name);
 
         // check
         if (readonly) {
             throw new UnsupportedOperationException("This LockContext is read-only:\n" + toString());
         }
-        if (lockman.getLockType(transaction, name).equals(LockType.NL)) {
+        if (oldLockType.equals(LockType.NL)) {
             throw new NoLockHeldException("No lock held by transaction "
                     + transactionNum + " on " + name);
         }
-        if (lockman.getLockType(transaction, name).equals(newLockType)) {
+        if (oldLockType.equals(newLockType)) {
             throw new DuplicateLockRequestException("Duplicate lock request from transaction "
                     + transactionNum + " on " + name);
         }
@@ -266,25 +270,30 @@ public class LockContext {
                             newLockType, name, transactionNum));
         }
 
-        // invoke underlying LockManager's promote()
-        lockman.promote(transaction, name, newLockType);
-
         // For promotion to SIX from IS/IX, all S and IS locks on descendants must be simultaneously released.
-        // Q: synchronized ?
-        List<ResourceName> sisDescendants = sisDescendants(transaction);
-        synchronized (lockman) {
-            for (ResourceName resourceName : sisDescendants) {
-                lockman.release(transaction, resourceName);
+        if (newLockType.equals(LockType.SIX)
+                && (oldLockType.equals(LockType.IS) || oldLockType.equals(LockType.IX))) {
 
-                // update numChildLocks
-                if (resourceName.parent().equals(name)) {   // if it the resource is a child of the curr resource (not descendant)
-                    numChildLocks.put(transactionNum, numChildLocks.get(transactionNum) - 1);
-                }
+            List<ResourceName> releaseNames = sisDescendants(transaction);
+            lockman.acquireAndRelease(transaction, name, newLockType, releaseNames);
+
+            // update numChildLocks
+            // Q: synchronized(lockman) ?
+            for (ResourceName releaseName : releaseNames) {
+                LockContext lockContext = LockContext.fromResourceName(lockman, releaseName);
+                LockContext parentContext = lockContext.parentContext();
+                parentContext.numChildLocks.put(transactionNum, parentContext.numChildLocks.get(transactionNum) - 1);
             }
+        } else {
+            // invoke underlying LockManager's promote()
+            lockman.promote(transaction, name, newLockType);
         }
     }
 
     /**
+     * Escalate all locks on descendants (these are the fine locks) into
+     * one lock on the context escalate() was called with (the coarse lock).
+     *
      * Escalate `transaction`'s lock from descendants of this context to this
      * level, using either an S or X lock. There should be no descendant locks
      * after this call, and every operation valid on descendants of this context
@@ -314,13 +323,59 @@ public class LockContext {
      * relevant contexts, or else calls to LockContext#getNumChildren will not
      * work properly.
      *
+     * 1. We are only escalating to S or X. Don't allow escalating to intent locks (IS/IX/SIX).
+     * 2. If we only had IS/S locks, we should escalate to S, not X.
+     *
      * @throws NoLockHeldException if `transaction` has no lock at this level
      * @throws UnsupportedOperationException if context is readonly
      */
     public void escalate(TransactionContext transaction) throws NoLockHeldException {
-        // TODO(proj4_part2): implement
+        // (proj4_part2): implement
 
-        return;
+        long transactionNum = transaction.getTransNum();
+
+        // check
+        if (readonly) {
+            throw new UnsupportedOperationException("This LockContext is read-only:\n" + toString());
+        }
+        if (lockman.getLockType(transaction, name).equals(LockType.NL)) {
+            throw new NoLockHeldException("No lock held by transaction "
+                    + transactionNum + " on " + name);
+        }
+
+        // go through child locks
+        LockType escalateLockType = LockType.S;
+        List<Lock> locks = lockman.getLocks(transaction);
+        List<ResourceName> releaseNames = new ArrayList<>();
+        for (Lock lock : locks) {
+            if (lock.name.equals(name)) {
+                releaseNames.add(name);
+
+                if (lock.lockType.equals(LockType.IX) || lock.lockType.equals(LockType.SIX)) {
+                    escalateLockType = LockType.X;
+                } else if ((lock.lockType.equals(LockType.S) || lock.lockType.equals(LockType.X))
+                        /*&& numChildLocks.get(transactionNum) == 0*/) {
+                    // prevent repetitive escalate
+                    return;
+                }
+            } else if (lock.name.isDescendantOf(name)) {
+                if (lock.lockType.equals(LockType.X) || lock.lockType.equals(LockType.IX)
+                        || lock.lockType.equals(LockType.SIX)) {
+                    escalateLockType = LockType.X;
+                }
+                releaseNames.add(lock.name);
+            }
+        }
+
+        lockman.acquireAndRelease(transaction, name, escalateLockType, releaseNames);
+
+        // update numChildLocks
+        // Q: synchronized(lockman) ?
+        for (ResourceName releaseName : releaseNames) {
+            LockContext lockContext = LockContext.fromResourceName(lockman, releaseName);
+            lockContext.numChildLocks.put(transactionNum, 0);
+        }
+        numChildLocks.put(transactionNum, 0);
     }
 
     /**
