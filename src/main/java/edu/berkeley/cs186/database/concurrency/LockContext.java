@@ -13,6 +13,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * There is exactly ONE LockContext for each resource:
  * calling childContext with the same parameters multiple times returns the same object.
+ *
+ * Question: synchronized ?
  */
 public class LockContext {
     // You should not remove any of these fields. You may add additional
