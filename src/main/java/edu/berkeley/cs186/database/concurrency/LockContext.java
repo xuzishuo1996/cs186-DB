@@ -277,6 +277,7 @@ public class LockContext {
                 && (oldLockType.equals(LockType.IS) || oldLockType.equals(LockType.IX))) {
 
             List<ResourceName> releaseNames = sisDescendants(transaction);
+            releaseNames.add(name);
             lockman.acquireAndRelease(transaction, name, newLockType, releaseNames);
 
             // update numChildLocks

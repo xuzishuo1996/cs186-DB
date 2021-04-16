@@ -48,11 +48,11 @@ public class LockUtil {
             return;
         }
 
-//        // If the current lock type is IX and the requested lock is S
-//        if (explicitLockType.equals(LockType.IX) && requestType.equals(LockType.S)) {
-//            parentContext.promote(transaction, LockType.SIX);
-//            lockContext.acquire(transaction, LockType.S);
-//        }
+        // If the current lock type is IX and the requested lock is S
+        if (explicitLockType.equals(LockType.IX) && requestType.equals(LockType.S)) {
+            lockContext.promote(transaction, LockType.SIX);
+            return;
+        }
 //
 //        // If the current lock type is an intent lock
 //        if (explicitLockType.isIntent()) {
