@@ -273,13 +273,15 @@ public class LockContext {
         // Q: synchronized ?
         List<ResourceName> sisDescendants = sisDescendants(transaction);
         synchronized (lockman) {
-            for (ResourceName name : sisDescendants) {
-                lockman.release(transaction, name);
+            for (ResourceName resourceName : sisDescendants) {
+                lockman.release(transaction, resourceName);
+
+                // update numChildLocks
+                if (resourceName.parent().equals(name)) {   // if it the resource is a child of the curr resource (not descendant)
+                    numChildLocks.put(transactionNum, numChildLocks.get(transactionNum) - 1);
+                }
             }
         }
-
-        // update numChildLocks
-
     }
 
     /**
@@ -395,8 +397,18 @@ public class LockContext {
      * holds an S or IS lock.
      */
     private List<ResourceName> sisDescendants(TransactionContext transaction) {
-        // TODO(proj4_part2): implement
-        return new ArrayList<>();
+        // (proj4_part2): implement
+
+        List<ResourceName> res = new ArrayList<>();
+
+        List<Lock> locks = lockman.getLocks(transaction);
+        for (Lock lock : locks) {
+            if (lock.name.isDescendantOf(name)
+                    && (lock.lockType.equals(LockType.S) || lock.lockType.equals(LockType.IS))) {
+                res.add(lock.name);
+            }
+        }
+        return res;
     }
 
     /**
