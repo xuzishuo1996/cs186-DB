@@ -897,11 +897,37 @@ public class Database implements AutoCloseable {
             return pair.getSecond().getHeight();
         }
 
+        /**
+         * Using Strict Two-Phase Locking in our database, which means that
+         * lock releases only happen when the transaction finishes.
+         *
+         * Can't just release the locks in any order!
+         */
         @Override
         public void close() {
             try {
                 // TODO(proj4_part2)
-                return;
+
+                LockContext databaseContext = lockManager.databaseContext();
+                ResourceName database = databaseContext.getResourceName();
+                TransactionContext transaction = TransactionContext.getTransaction();
+                List<Lock> locks = lockManager.getLocks(transaction);
+                List<LockContext> lockContexts = new ArrayList<>();
+
+                for (Lock lock : locks) {
+                    lockContexts.add(lockManager.context(lock.name.toString()));
+                }
+
+                while (!lockContexts.isEmpty()) {
+                    Iterator<LockContext> iter = lockContexts.iterator();
+                    while (iter.hasNext()) {
+                        LockContext lockContext = iter.next();
+                        if (lockContext.getNumChildren(transaction) == 0) {
+                            lockContext.release(transaction);
+                            iter.remove();
+                        }
+                    }
+                }
             } catch (Exception e) {
                 // There's a chance an error message from your release phase
                 // logic can get suppressed. This guarantees that the stack

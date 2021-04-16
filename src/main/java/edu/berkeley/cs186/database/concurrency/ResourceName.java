@@ -52,7 +52,7 @@ public class ResourceName {
     /**
      * @return true if this resource is a descendant of `other`, false otherwise
      */
-    boolean isDescendantOf(ResourceName other) {
+    public boolean isDescendantOf(ResourceName other) {
         if (other.names.size() >= names.size()) {
             return false;
         }
