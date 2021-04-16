@@ -193,9 +193,40 @@ public class LockContext {
     }
 
     /**
+     * Helper method to check whether it is valid to promote the lock type.
+     */
+    private boolean isValidPromoteRequest(TransactionContext transaction, LockType newLockType) {
+
+        // disallow promotion to a SIX lock if an ancestor has SIX, because this would be redundant.
+        if (hasSIXAncestor(transaction)) {
+            return false;
+        }
+
+        LockType oldLockType = lockman.getLockType(transaction, name);
+
+        if (newLockType.equals(LockType.SIX)) {
+            return oldLockType.equals(LockType.IS) || oldLockType.equals(LockType.IX) || oldLockType.equals(LockType.S);
+        } else {
+            return LockType.substitutable(newLockType, oldLockType) && !newLockType.equals(oldLockType);
+        }
+    }
+
+    /**
      * Promote `transaction`'s lock to `newLockType`. For promotion to SIX from
      * IS/IX, all S and IS locks on descendants must be simultaneously
      * released. The helper function sisDescendants may be helpful here.
+     *
+     * This method performs a lock promotion via the underlying LockManager
+     * after ensuring that all multigranularity constraints are met.
+     * For example, if the transaction has IS(database) and requests a promotion from S(table) to X(table),
+     * the appropriate exception must be thrown (see comments above method).
+     *
+     * In the special case of promotion to SIX (from IS/IX/S),
+     * you should simultaneously release all descendant locks of type S/IS,
+     * since we disallow having IS/S locks on descendants when a SIX lock is held.
+     *
+     * You should also disallow promotion to a SIX lock if an ancestor has SIX,
+     * because this would be redundant.
      *
      * Note: you *must* make any necessary updates to numChildLocks, or else
      * calls to LockContext#getNumChildren will not work properly.
@@ -213,9 +244,42 @@ public class LockContext {
      */
     public void promote(TransactionContext transaction, LockType newLockType)
             throws DuplicateLockRequestException, NoLockHeldException, InvalidLockException {
-        // TODO(proj4_part2): implement
+        // (proj4_part2): implement
 
-        return;
+        long transactionNum = transaction.getTransNum();
+
+        // check
+        if (readonly) {
+            throw new UnsupportedOperationException("This LockContext is read-only:\n" + toString());
+        }
+        if (lockman.getLockType(transaction, name).equals(LockType.NL)) {
+            throw new NoLockHeldException("No lock held by transaction "
+                    + transactionNum + " on " + name);
+        }
+        if (lockman.getLockType(transaction, name).equals(newLockType)) {
+            throw new DuplicateLockRequestException("Duplicate lock request from transaction "
+                    + transactionNum + " on " + name);
+        }
+        if (!isValidPromoteRequest(transaction, newLockType)) {
+            throw new InvalidLockException(
+                    String.format("The promote request for %s on %s from transaction %s is invalid!",
+                            newLockType, name, transactionNum));
+        }
+
+        // invoke underlying LockManager's promote()
+        lockman.promote(transaction, name, newLockType);
+
+        // For promotion to SIX from IS/IX, all S and IS locks on descendants must be simultaneously released.
+        // Q: synchronized ?
+        List<ResourceName> sisDescendants = sisDescendants(transaction);
+        synchronized (lockman) {
+            for (ResourceName name : sisDescendants) {
+                lockman.release(transaction, name);
+            }
+        }
+
+        // update numChildLocks
+
     }
 
     /**
@@ -311,7 +375,15 @@ public class LockContext {
      * @return true if holds a SIX at an ancestor, false if not
      */
     private boolean hasSIXAncestor(TransactionContext transaction) {
-        // TODO(proj4_part2): implement
+        // (proj4_part2): implement
+
+        LockContext currParent = parent;
+        while (currParent != null) {
+            if (parent.getExplicitLockType(transaction).equals(LockType.SIX)) {
+                return true;
+            }
+            currParent = currParent.parent;
+        }
         return false;
     }
 
