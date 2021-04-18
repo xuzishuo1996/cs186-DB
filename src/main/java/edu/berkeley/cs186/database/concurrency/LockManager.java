@@ -481,6 +481,14 @@ public class LockManager {
     }
 
     /**
+     * Returns the list of locks held by `transactionNum`, in order of acquisition.
+     */
+    public synchronized List<Lock> getLocks(Long transactionNum) {
+        return new ArrayList<>(transactionLocks.getOrDefault(transactionNum,
+                Collections.emptyList()));
+    }
+
+    /**
      * Creates a lock context. See comments at the top of this file and the top
      * of LockContext.java for more information.
      */

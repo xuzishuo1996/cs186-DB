@@ -908,10 +908,10 @@ public class Database implements AutoCloseable {
             try {
                 // TODO(proj4_part2)
 
-                LockContext databaseContext = lockManager.databaseContext();
-                ResourceName database = databaseContext.getResourceName();
-                TransactionContext transaction = TransactionContext.getTransaction();
-                List<Lock> locks = lockManager.getLocks(transaction);
+//                LockContext databaseContext = lockManager.databaseContext();
+//                ResourceName database = databaseContext.getResourceName();
+//                TransactionContext transaction = TransactionContext.getTransaction();
+                List<Lock> locks = lockManager.getLocks(this);
                 List<LockContext> lockContexts = new ArrayList<>();
 
                 for (Lock lock : locks) {
@@ -922,8 +922,8 @@ public class Database implements AutoCloseable {
                     Iterator<LockContext> iter = lockContexts.iterator();
                     while (iter.hasNext()) {
                         LockContext lockContext = iter.next();
-                        if (lockContext.getNumChildren(transaction) == 0) {
-                            lockContext.release(transaction);
+                        if (lockContext.getNumChildren(this) == 0) {
+                            lockContext.release(this);
                             iter.remove();
                         }
                     }
