@@ -906,28 +906,33 @@ public class Database implements AutoCloseable {
         @Override
         public void close() {
             try {
-                // TODO(proj4_part2)
+                // (proj4_part2)
 
-//                LockContext databaseContext = lockManager.databaseContext();
-//                ResourceName database = databaseContext.getResourceName();
-//                TransactionContext transaction = TransactionContext.getTransaction();
                 List<Lock> locks = lockManager.getLocks(this);
-                List<LockContext> lockContexts = new ArrayList<>();
 
+                // release the locks from bottom-up
+                Collections.reverse(locks);
                 for (Lock lock : locks) {
-                    lockContexts.add(lockManager.context(lock.name.toString()));
+                    LockContext lockContext = LockContext.fromResourceName(lockManager, lock.name);
+                    lockContext.release(this);
                 }
 
-                while (!lockContexts.isEmpty()) {
-                    Iterator<LockContext> iter = lockContexts.iterator();
-                    while (iter.hasNext()) {
-                        LockContext lockContext = iter.next();
-                        if (lockContext.getNumChildren(this) == 0) {
-                            lockContext.release(this);
-                            iter.remove();
-                        }
-                    }
-                }
+//              // Another approach: slow, not necessary.
+//                List<LockContext> lockContexts = new ArrayList<>();
+//                for (Lock lock : locks) {
+//                    lockContexts.add(LockContext.fromResourceName(lockManager, lock.name));
+//                }
+//                while (!lockContexts.isEmpty()) {
+//                    Iterator<LockContext> iter = lockContexts.iterator();
+//                    while (iter.hasNext()) {
+//                        LockContext lockContext = iter.next();
+//                        if (lockContext.getNumChildren(this) == 0) {
+//                            lockContext.release(this);
+//                            iter.remove();
+//                        }
+//                    }
+//                }
+
             } catch (Exception e) {
                 // There's a chance an error message from your release phase
                 // logic can get suppressed. This guarantees that the stack
