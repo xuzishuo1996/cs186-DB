@@ -1,18 +1,22 @@
 package edu.berkeley.cs186.database.table;
 
-import java.util.*;
-
 import edu.berkeley.cs186.database.DatabaseException;
-import edu.berkeley.cs186.database.cli.PrettyPrinter;
-import edu.berkeley.cs186.database.common.iterator.*;
 import edu.berkeley.cs186.database.common.Bits;
 import edu.berkeley.cs186.database.common.Buffer;
+import edu.berkeley.cs186.database.common.iterator.BacktrackingIterable;
+import edu.berkeley.cs186.database.common.iterator.BacktrackingIterator;
+import edu.berkeley.cs186.database.common.iterator.ConcatBacktrackingIterator;
+import edu.berkeley.cs186.database.common.iterator.IndexBacktrackingIterator;
 import edu.berkeley.cs186.database.concurrency.LockContext;
 import edu.berkeley.cs186.database.concurrency.LockType;
 import edu.berkeley.cs186.database.concurrency.LockUtil;
 import edu.berkeley.cs186.database.io.PageException;
 import edu.berkeley.cs186.database.memory.Page;
 import edu.berkeley.cs186.database.table.stats.TableStats;
+
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 /**
  * # Overview
@@ -358,10 +362,6 @@ public class Table implements BacktrackingIterable<Record> {
         return "Table " + name;
     }
 
-    public void prettyPrint() {
-        PrettyPrinter.printTable(this);
-    }
-
     // Helpers /////////////////////////////////////////////////////////////////
     private Page fetchPage(long pageNum) {
         try {
@@ -405,7 +405,7 @@ public class Table implements BacktrackingIterable<Record> {
      * records
      */
     public BacktrackingIterator<RecordId> ridIterator() {
-        // TODO(proj4_part2): Update the following line
+        // (proj4_part2): Update the following line
         LockUtil.ensureSufficientLockHeld(tableContext, LockType.S);
 
         BacktrackingIterator<Page> iter = pageDirectory.iterator();
@@ -419,7 +419,7 @@ public class Table implements BacktrackingIterable<Record> {
      * will also support backtracking.
      */
     public BacktrackingIterator<Record> recordIterator(Iterator<RecordId> rids) {
-        // TODO(proj4_part2): Update the following line
+        // (proj4_part2): Update the following line
         LockUtil.ensureSufficientLockHeld(tableContext, LockType.S);
         return new RecordIterator(rids);
     }

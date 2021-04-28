@@ -139,20 +139,19 @@ public abstract class LogRecord {
     /**
      * Returns a CLR undoing this log record, but does not execute the undo.
      * @param lastLSN lastLSN for the CLR
-     * @return the CLR corresponding to this log record, and a boolean that is true
-     *         if the log must be flushed up to the CLR after executing the undo,
-     *         and false otherwise.
+     * @return the CLR corresponding to this log record.
      */
-    public Pair<LogRecord, Boolean> undo(long lastLSN) {
+    public LogRecord undo(long lastLSN) {
         throw new UnsupportedOperationException("cannot undo this record: " + this);
     }
 
     /**
-     * Performs the change described by this log record.
-     * @param dsm disk space manager
-     * @param bm buffer manager
+     * Performs the change described by this log record
+     * @param rm the database's recovery manager.
+     * @param dsm the database's disk space manager
+     * @param bm the database's buffer manager
      */
-    public void redo(DiskSpaceManager dsm, BufferManager bm) {
+    public void redo(RecoveryManager rm, DiskSpaceManager dsm, BufferManager bm) {
         onRedo.accept(this);
         if (!isRedoable()) {
             throw new UnsupportedOperationException("cannot redo this record: " + this);
