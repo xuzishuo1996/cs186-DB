@@ -14,6 +14,8 @@ import java.util.function.Function;
 
 /**
  * Implementation of ARIES.
+ *
+ * https://cs186.gitbook.io/project/assignments/proj5/your-tasks
  */
 public class ARIESRecoveryManager implements RecoveryManager {
     // Disk space manager.
@@ -92,8 +94,16 @@ public class ARIESRecoveryManager implements RecoveryManager {
      */
     @Override
     public long commit(long transNum) {
-        // TODO(proj5): implement
-        return -1L;
+        // (proj5): implement
+
+        TransactionTableEntry transactionEntry = transactionTable.get(transNum);
+        assert (transactionEntry != null);
+
+        transactionEntry.lastLSN = logManager.appendToLog(
+                new CommitTransactionLogRecord(transNum, transactionEntry.lastLSN));
+        transactionEntry.transaction.setStatus(Transaction.Status.COMMITTING);
+        flushToLSN(transactionEntry.lastLSN);
+        return transactionEntry.lastLSN;
     }
 
     /**
@@ -108,8 +118,15 @@ public class ARIESRecoveryManager implements RecoveryManager {
      */
     @Override
     public long abort(long transNum) {
-        // TODO(proj5): implement
-        return -1L;
+        // (proj5): implement
+
+        TransactionTableEntry transactionEntry = transactionTable.get(transNum);
+        assert (transactionEntry != null);
+
+        transactionEntry.lastLSN = logManager.appendToLog(
+                new AbortTransactionLogRecord(transNum, transactionEntry.lastLSN));
+        transactionEntry.transaction.setStatus(Transaction.Status.ABORTING);
+        return transactionEntry.lastLSN;
     }
 
     /**
@@ -126,8 +143,21 @@ public class ARIESRecoveryManager implements RecoveryManager {
      */
     @Override
     public long end(long transNum) {
-        // TODO(proj5): implement
-        return -1L;
+        // (proj5): implement
+
+        TransactionTableEntry transactionEntry = transactionTable.remove(transNum);
+        assert (transactionEntry != null);
+
+        if (transactionEntry.transaction.getStatus() == Transaction.Status.ABORTING) {
+            transactionEntry.lastLSN = logManager.appendToLog(
+                    new EndTransactionLogRecord(transNum, ));   // roll back changes
+        } else {
+            transactionEntry.lastLSN = logManager.appendToLog(
+                    new EndTransactionLogRecord(transNum, transactionEntry.lastLSN));
+        }
+
+        transactionEntry.transaction.setStatus(Transaction.Status.COMPLETE);
+        return transactionEntry.lastLSN;
     }
 
     /**
